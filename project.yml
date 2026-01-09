@@ -1,0 +1,66 @@
+name: Trueframe
+options:
+  bundleIdPrefix: com.trueframe
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: CL6XWJCS9R
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1"
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+    INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
+    INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+    INFOPLIST_KEY_NSCameraUsageDescription: "Trueframe captures photos when you cover the proximity sensor"
+    INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "Photos are saved to your Camera Roll"
+    INFOPLIST_KEY_NSMotionUsageDescription: "Motion data helps select the right camera and adjust capture timing"
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+targets:
+  Trueframe:
+    type: application
+    platform: iOS
+    sources:
+      - path: Trueframe
+        excludes:
+          - "**/*.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.trueframe.app
+        INFOPLIST_FILE: Trueframe/Resources/Info.plist
+    info:
+      path: Trueframe/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Trueframe
+        UILaunchScreen:
+          UIColorName: ""
+          UIImageName: ""
+        UIRequiredDeviceCapabilities:
+          - armv7
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIUserInterfaceStyle: Dark
+        NSCameraUsageDescription: "Trueframe captures photos when you cover the proximity sensor"
+        NSPhotoLibraryAddUsageDescription: "Photos are saved to your Camera Roll"
+        NSMotionUsageDescription: "Motion data helps select the right camera and adjust capture timing"
+        NSMicrophoneUsageDescription: "Audio is captured along with video recordings"
+
+  TrueframeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TrueframeTests
+    dependencies:
+      - target: Trueframe
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.trueframe.tests
+        GENERATE_INFOPLIST_FILE: YES
