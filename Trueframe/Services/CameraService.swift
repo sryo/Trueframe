@@ -1,4 +1,4 @@
-// Handles photo capture with thread-safe Actor isolation.
+// Manages camera capture sessions.
 
 @preconcurrency import AVFoundation
 import Combine
@@ -21,8 +21,6 @@ enum CameraError: Error, LocalizedError {
     }
 }
 
-/// Thread-safe camera service using Actor isolation.
-/// All mutable state is protected from data races.
 actor CameraService {
     // MARK: - Published State (nonisolated for Combine compatibility)
 
@@ -49,12 +47,10 @@ actor CameraService {
     private var currentPosition: CameraPosition = .back
     private var configuredBackCameraType: BackCameraType?  // Track which lens is currently configured
     private var pendingCapture: CheckedContinuation<Void, Error>?
-    private var isCapturingReactionShot = false
     private(set) var isReady = false
     private(set) var flashEnabled = false
     private var pendingFrameCapture: CheckedContinuation<UIImage?, Never>?
 
-    /// Photo quality settings for capture configuration
     var qualitySettings: PhotoQualitySettings?
 
     // MARK: - Queues
@@ -234,6 +230,13 @@ actor CameraService {
         session.addOutput(photoOut)
         session.addOutput(videoOut)
 
+        // Configure video connection orientation
+        if let connection = videoOut.connection(with: .video) {
+            if connection.isVideoRotationAngleSupported(90) {
+                connection.videoRotationAngle = 90  // Portrait orientation
+            }
+        }
+
         currentInput = input
         photoOutput = photoOut
         videoOutput = videoOut
@@ -347,95 +350,24 @@ actor CameraService {
         }
     }
 
-    func captureReactionShot() async throws {
-        guard let session = captureSession, let frontCam = frontCamera else { return }
+    // MARK: - Delegate Callbacks
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            sessionQueue.async { [weak self] in
-                guard let self else {
-                    continuation.resume()
-                    return
-                }
-
-                session.beginConfiguration()
-                if let current = self.currentInput { session.removeInput(current) }
-
-                do {
-                    try self.configureFaceAutofocus(for: frontCam)
-                    let frontInput = try AVCaptureDeviceInput(device: frontCam)
-                    guard session.canAddInput(frontInput) else {
-                        session.commitConfiguration()
-                        continuation.resume()
-                        return
-                    }
-
-                    session.addInput(frontInput)
-                    self.currentInput = frontInput
-                    session.commitConfiguration()
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        Task {
-                            await self.setCapturingReactionShot(true)
-                            try? await self.captureSingle()
-                            await self.setCapturingReactionShot(false)
-                            continuation.resume()
-                        }
-                    }
-                } catch {
-                    session.commitConfiguration()
-                    continuation.resume()
-                }
-            }
-        }
-    }
-
-    private func setCapturingReactionShot(_ value: Bool) {
-        isCapturingReactionShot = value
-    }
-
-    // MARK: - Delegate Callbacks (called from wrapper)
-
-    /// Handle photo capture error
     func handlePhotoError(_ error: Error) {
         pendingCapture?.resume(throwing: error)
         pendingCapture = nil
     }
 
-    /// Handle successfully captured photo image (already converted from AVCapturePhoto by delegate)
     func handlePhotoImage(_ image: UIImage) {
-        let isReaction = isCapturingReactionShot
-
-        // Process image synchronously within actor context
         let correctedImage = image.correctedForOrientation()
-
-        if isReaction {
-            saveReactionShotToCameraRoll(correctedImage)
-        } else {
-            let captured = CapturedPhoto(image: correctedImage)
-            capturedPhotoSubject.send(captured)
-        }
+        let captured = CapturedPhoto(image: correctedImage)
+        capturedPhotoSubject.send(captured)
 
         pendingCapture?.resume()
         pendingCapture = nil
     }
 
-    private func saveReactionShotToCameraRoll(_ image: UIImage) {
-        guard let imageData = image.jpegData(compressionQuality: 0.95) else { return }
+    // MARK: - Frame Capture
 
-        Task.detached {
-            try? await PHPhotoLibrary.shared().performChanges {
-                let request = PHAssetCreationRequest.forAsset()
-                let options = PHAssetResourceCreationOptions()
-                options.originalFilename = "trueframe-reaction-\(UUID().uuidString.prefix(8)).jpg"
-                request.addResource(with: .photo, data: imageData, options: options)
-                request.creationDate = Date()
-            }
-        }
-    }
-
-    // MARK: - Fast Frame Capture (for burst mode)
-
-    /// Capture a frame from the video stream - much faster than photo capture
     func captureFrame() async -> UIImage? {
         guard isReady else { return nil }
         return await withCheckedContinuation { continuation in
@@ -443,7 +375,6 @@ actor CameraService {
         }
     }
 
-    /// Handle incoming video frame image (already converted from CMSampleBuffer by delegate)
     func handleVideoFrameImage(_ image: UIImage) {
         guard let continuation = pendingFrameCapture else { return }
         pendingFrameCapture = nil
@@ -453,10 +384,9 @@ actor CameraService {
     }
 }
 
-// MARK: - AVCapturePhotoCaptureDelegate Wrapper
+// MARK: - Delegate Wrappers
 
-/// Wrapper class to handle AVCapturePhotoCaptureDelegate since actors can't directly conform.
-/// Extracts image data synchronously during callback to ensure safe async handling.
+// Actors can't conform to delegate protocols directly.
 private final class CameraServiceDelegateWrapper: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
     private weak var service: CameraService?
 
@@ -493,11 +423,10 @@ private final class CameraServiceDelegateWrapper: NSObject, AVCapturePhotoCaptur
     }
 }
 
-/// Delegate for fast video frame capture
-/// IMPORTANT: CMSampleBuffer is only valid during the callback, so we extract the image synchronously.
+// CMSampleBuffer is only valid during callback, so extract image synchronously.
 private final class VideoFrameCaptureDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     private weak var service: CameraService?
-    private let context = CIContext()
+    private let context = CIContext(options: [.useSoftwareRenderer: false])
 
     init(service: CameraService) {
         self.service = service
@@ -505,15 +434,12 @@ private final class VideoFrameCaptureDelegate: NSObject, AVCaptureVideoDataOutpu
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // CRITICAL: Extract image synchronously - CMSampleBuffer is only valid during this callback
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
 
-        let image = UIImage(cgImage: cgImage)
-
-        // Now safe to pass UIImage to the actor asynchronously
+        let image = UIImage(cgImage: cgImage, scale: 1.0, orientation: .up)
         let serviceRef = service
         Task {
             await serviceRef?.handleVideoFrameImage(image)

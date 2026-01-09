@@ -1,12 +1,12 @@
-// Camera selection settings for back camera lens types.
+// Camera lens selection settings.
 
 import Foundation
 import Observation
 
 enum BackCameraType: String, CaseIterable, Equatable, Sendable {
-    case wide       // Main camera (1x)
-    case ultrawide  // Ultrawide camera (0.5x)
-    case telephoto  // Telephoto camera (2x/3x)
+    case wide
+    case ultrawide
+    case telephoto
 }
 
 @Observable
@@ -16,7 +16,6 @@ final class CameraSelectionSettings {
         static let flash = "camera.flash"
     }
 
-    /// The currently selected camera (mutually exclusive)
     var selectedCamera: BackCameraType {
         didSet { UserDefaults.standard.set(selectedCamera.rawValue, forKey: Keys.selectedCamera) }
     }
@@ -25,17 +24,14 @@ final class CameraSelectionSettings {
         didSet { UserDefaults.standard.set(flashEnabled, forKey: Keys.flash) }
     }
 
-    // MARK: - Lens Smudge Detection State
+    // MARK: - Lens Smudge Detection
 
-    /// Tracks which lenses are currently detected as smudged
     var smudgedLenses: Set<BackCameraType> = []
 
-    /// Check if a specific lens is smudged
     func isSmudged(_ camera: BackCameraType) -> Bool {
         smudgedLenses.contains(camera)
     }
 
-    /// Update smudge status for a lens
     func setSmudged(_ camera: BackCameraType, isSmudged: Bool) {
         if isSmudged {
             smudgedLenses.insert(camera)
@@ -64,10 +60,6 @@ final class CameraSelectionSettings {
             self.selectedCamera = .wide
         }
         self.flashEnabled = defaults.object(forKey: Keys.flash) as? Bool ?? false
-    }
-
-    func isEnabled(_ camera: BackCameraType) -> Bool {
-        selectedCamera == camera
     }
 
     /// Select a camera (mutually exclusive - only one active at a time)

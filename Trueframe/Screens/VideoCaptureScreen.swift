@@ -65,9 +65,7 @@ final class VideoCaptureViewModel: ObservableObject {
             isStarting = false
             isRecordingActive = false
 
-            let handler = delegateHandler
-            Task { [handler] in
-                _ = handler
+            Task {
                 if wasRecording {
                     _ = await videoService.stopRecording()
                 }
@@ -100,8 +98,6 @@ final class VideoCaptureViewModel: ObservableObject {
 
                 // Create delegate
                 let handler = VideoDelegateHandler(
-                    onStart: {},
-                    onFinish: { _ in },
                     onError: { [weak self] error in
                         print("[VideoCapture] Error: \(error)")
                         self?.endRecording()
@@ -156,12 +152,9 @@ final class VideoCaptureViewModel: ObservableObject {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         }
 
-        let handler = delegateHandler
         let capturedAppState = appState
 
-        Task { [handler] in
-            _ = handler
-
+        Task {
             var videoURL: URL? = nil
             if wasRecording {
                 videoURL = await videoService.stopRecording()
@@ -179,33 +172,18 @@ final class VideoCaptureViewModel: ObservableObject {
 
 // MARK: - Video Delegate Handler
 
-/// A Sendable delegate handler that can safely cross actor boundaries
 final class VideoDelegateHandler: VideoRecordingDelegate, @unchecked Sendable {
-    private let onStart: @MainActor () -> Void
-    private let onFinish: @MainActor (URL) -> Void
     private let onError: @MainActor (Error) -> Void
 
-    init(
-        onStart: @escaping @MainActor () -> Void,
-        onFinish: @escaping @MainActor (URL) -> Void,
-        onError: @escaping @MainActor (Error) -> Void
-    ) {
-        self.onStart = onStart
-        self.onFinish = onFinish
+    init(onError: @escaping @MainActor (Error) -> Void) {
         self.onError = onError
     }
 
-    @MainActor func videoRecording(didStartAt url: URL) {
-        onStart()
-    }
+    @MainActor func videoRecording(didStartAt url: URL) {}
 
-    @MainActor func videoRecording(didFinishAt url: URL) {
-        onFinish(url)
-    }
+    @MainActor func videoRecording(didFinishAt url: URL) {}
 
-    @MainActor func videoRecording(didUpdateDuration duration: TimeInterval) {
-        // Duration is handled via polling in the ViewModel
-    }
+    @MainActor func videoRecording(didUpdateDuration duration: TimeInterval) {}
 
     @MainActor func videoRecording(didFailWithError error: Error) {
         onError(error)

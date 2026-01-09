@@ -2,7 +2,6 @@
 
 import SwiftUI
 
-/// Available capture modes
 enum CaptureMode: String, CaseIterable, Identifiable {
     case photo = "Photo"
     case video = "Video"

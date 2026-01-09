@@ -31,7 +31,9 @@ final class HapticHeartbeatService: HapticServiceProtocol {
             self.engine = newEngine
             self.player = try newEngine.makePlayer(with: createHeartbeatPattern())
             self.isReady = true
-        } catch {}
+        } catch {
+            print("[HapticHeartbeatService] Failed to prepare: \(error)")
+        }
     }
 
     func playHeartbeat() {
@@ -44,9 +46,10 @@ final class HapticHeartbeatService: HapticServiceProtocol {
     }
 
     func endSession() {
-        engine?.stop(completionHandler: nil)
-        player = nil
         isReady = false
+        player = nil
+        engine?.stop()
+        engine = nil
     }
 
     private func createHeartbeatPattern() throws -> CHHapticPattern {

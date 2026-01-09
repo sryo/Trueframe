@@ -1,11 +1,9 @@
-// Live Photos capture and creation service.
-// Converts "heart capture" sessions into living photo memories.
+// Creates Live Photos from capture sessions.
 
 import AVFoundation
 import Photos
 import UIKit
 
-/// Errors that can occur during Live Photo operations
 enum LivePhotoError: Error, LocalizedError {
     case notSupported
     case captureSessionNotConfigured
@@ -24,19 +22,28 @@ enum LivePhotoError: Error, LocalizedError {
     }
 }
 
-/// Service for creating Live Photos from capture sessions
 actor LivePhotoService {
     static let shared = LivePhotoService()
+
+    // MARK: - Constants
+
+    private enum Constants {
+        static let defaultFPS: Double = 15.0
+        static let videoTimescale: CMTimeScale = 600
+        static let keyPhotoFilename = "trueframe-live.jpg"
+        static let movieFilename = "trueframe-live.mov"
+        static let tempDirectoryName = "LivePhotos"
+    }
 
     private let fileManager = FileManager.default
     private let tempDirectory: URL
 
     init() {
         // Safe fallback to temp directory if caches unavailable
-        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        tempDirectory = caches.appendingPathComponent("LivePhotos", isDirectory: true)
-        try? FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? fileManager.temporaryDirectory
+        tempDirectory = caches.appendingPathComponent(Constants.tempDirectoryName, isDirectory: true)
+        try? fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
     }
 
     // MARK: - Live Photo from Image Sequence
@@ -46,7 +53,7 @@ actor LivePhotoService {
         keyPhoto: UIImage,
         beforeImages: [UIImage],
         afterImages: [UIImage],
-        fps: Double = 15.0
+        fps: Double = Constants.defaultFPS
     ) async throws -> (imageURL: URL, movieURL: URL) {
         // Save key photo as JPEG
         let photoID = UUID().uuidString
@@ -66,7 +73,7 @@ actor LivePhotoService {
             from: allImages,
             at: movieURL,
             fps: fps,
-            stillImageTime: CMTime(seconds: Double(keyPhotoIndex) / fps, preferredTimescale: 600)
+            stillImageTime: CMTime(seconds: Double(keyPhotoIndex) / fps, preferredTimescale: Constants.videoTimescale)
         )
 
         return (imageURL, movieURL)
@@ -126,7 +133,7 @@ actor LivePhotoService {
         writer.startSession(atSourceTime: .zero)
 
         // Write frames
-        let frameDuration = CMTime(seconds: 1.0 / fps, preferredTimescale: 600)
+        let frameDuration = CMTime(seconds: 1.0 / fps, preferredTimescale: Constants.videoTimescale)
 
         for (index, image) in images.enumerated() {
             guard let cgImage = image.cgImage else { continue }
@@ -208,12 +215,12 @@ actor LivePhotoService {
 
             // Add photo
             let photoOptions = PHAssetResourceCreationOptions()
-            photoOptions.originalFilename = "trueframe-live.jpg"
+            photoOptions.originalFilename = Constants.keyPhotoFilename
             request.addResource(with: .photo, fileURL: imageURL, options: photoOptions)
 
             // Add movie companion
             let movieOptions = PHAssetResourceCreationOptions()
-            movieOptions.originalFilename = "trueframe-live.mov"
+            movieOptions.originalFilename = Constants.movieFilename
             request.addResource(with: .pairedVideo, fileURL: movieURL, options: movieOptions)
         }
     }
@@ -238,8 +245,7 @@ actor LivePhotoService {
         let (imageURL, movieURL) = try await createLivePhoto(
             keyPhoto: keyPhoto,
             beforeImages: beforeImages,
-            afterImages: afterImages,
-            fps: 15.0
+            afterImages: afterImages
         )
 
         try await saveLivePhoto(imageURL: imageURL, movieURL: movieURL)

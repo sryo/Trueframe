@@ -14,13 +14,8 @@ final class AppState {
     private(set) var sessionPhotos: [UIImage] = []
     private(set) var hasPermissions = false
 
-    /// Shows tumble animation after capture
     private(set) var showingTumbleAnimation = false
-
-    /// Pending video URL to save after tumble animation
     private var pendingVideoURL: URL?
-
-    /// Current capture mode (Photo/Burst/Video)
     var captureMode: CaptureMode = .photo
 
     let cameraService = CameraService()
@@ -108,26 +103,18 @@ final class AppState {
         showingTumbleAnimation = true
     }
 
-    /// Called when tumble animation completes - triggers auto-save
     func tumbleAnimationComplete() {
         guard showingTumbleAnimation else { return }
         showingTumbleAnimation = false
 
-        // Check if this was a video capture
         if let videoURL = pendingVideoURL {
             pendingVideoURL = nil
             Task { [weak self] in
                 await self?.autoSaveVideo(videoURL)
             }
         } else {
-            // Auto-save best photos - the core philosophy of Trueframe
-            let photos = sessionPhotos
-            guard !photos.isEmpty else {
-                resetSession()
-                return
-            }
             Task { [weak self] in
-                await self?.autoSaveBestPhotos(photos)
+                await self?.autoSaveBestPhotos()
             }
         }
     }
@@ -154,14 +141,28 @@ final class AppState {
         }
     }
 
-    /// Auto-save best photos to camera roll
-    private func autoSaveBestPhotos(_ photos: [UIImage]) async {
-        guard !photos.isEmpty else {
+    private func autoSaveBestPhotos() async {
+        let photoIDs = await photoCache.getPhotoIDs()
+        guard !photoIDs.isEmpty else {
             resetSession()
             return
         }
 
-        let ranked = await photoAnalyzer.analyzeAndRank(photos)
+        // Load full images from disk, not thumbnails
+        var fullPhotos: [(id: UUID, image: UIImage)] = []
+        for id in photoIDs {
+            if let image = await photoCache.fullImage(for: id) {
+                fullPhotos.append((id: id, image: image))
+            }
+        }
+
+        guard !fullPhotos.isEmpty else {
+            resetSession()
+            return
+        }
+
+        let images = fullPhotos.map { $0.image }
+        let ranked = await photoAnalyzer.analyzeAndRank(images)
         let sortedByScore = ranked.sorted { $0.score.overallScore > $1.score.overallScore }
 
         let qualityThreshold: Float = 0.4
@@ -171,22 +172,25 @@ final class AppState {
             photosToSave = [sortedByScore[0]]
         }
 
+        var savedCount = 0
         for rankedPhoto in photosToSave {
             do {
                 try await savePhotoToLibrary(rankedPhoto.image)
+                savedCount += 1
             } catch {
                 print("[AppState] Failed to save photo: \(error)")
             }
         }
 
         await MainActor.run {
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            if savedCount > 0 {
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
         }
 
         resetSession()
     }
 
-    /// Auto-save video to camera roll
     private func autoSaveVideo(_ videoURL: URL) async {
         do {
             try await VideoRecordingService.shared.saveToPhotoLibrary(videoURL)
@@ -214,7 +218,6 @@ final class AppState {
         }
     }
 
-    /// Generate a thumbnail from a video URL
     private func generateVideoThumbnail(from url: URL) async -> UIImage? {
         await withCheckedContinuation { continuation in
             let asset = AVAsset(url: url)

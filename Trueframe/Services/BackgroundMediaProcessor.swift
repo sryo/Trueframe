@@ -1,12 +1,9 @@
-// Handles media processing as a continuous background task.
-// Ensures photo analysis and saving completes even if user backgrounds the app.
+// Processes photos in the background using BGContinuedProcessingTask.
 
 import BackgroundTasks
 import Photos
 import UIKit
 
-/// Processes captured media using BGContinuedProcessingTask for background execution.
-/// Supports GPU-accelerated Vision analysis and camera roll saving.
 @available(iOS 26.0, *)
 actor BackgroundMediaProcessor {
     static let shared = BackgroundMediaProcessor()
@@ -226,17 +223,11 @@ actor BackgroundMediaProcessor {
 
 enum MediaProcessingError: Error, LocalizedError {
     case photoLibraryAccessDenied
-    case taskCancelled
-    case processingFailed
 
     var errorDescription: String? {
         switch self {
         case .photoLibraryAccessDenied:
             return "Photo library access denied"
-        case .taskCancelled:
-            return "Processing was cancelled"
-        case .processingFailed:
-            return "Failed to process media"
         }
     }
 }

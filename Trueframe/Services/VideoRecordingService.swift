@@ -1,11 +1,9 @@
-// Video recording service for proximity-triggered video capture.
-// Records video when phone is held to heart, similar to photo capture.
+// Manages video recording sessions.
 
 @preconcurrency import AVFoundation
 import Photos
 import UIKit
 
-/// Errors that can occur during video recording
 enum VideoRecordingError: Error, LocalizedError {
     case notConfigured
     case recordingInProgress
@@ -22,11 +20,9 @@ enum VideoRecordingError: Error, LocalizedError {
     }
 }
 
-/// Video quality preset
 enum VideoQuality: String, CaseIterable, Identifiable {
     case high4K = "4K"
     case fullHD = "1080p"
-    case hd = "720p"
 
     var id: String { rawValue }
 
@@ -34,7 +30,6 @@ enum VideoQuality: String, CaseIterable, Identifiable {
         switch self {
         case .high4K: return .hd4K3840x2160
         case .fullHD: return .hd1920x1080
-        case .hd: return .hd1280x720
         }
     }
 }
@@ -51,13 +46,6 @@ struct VideoConfiguration: Sendable {
         maxDuration: 60.0,
         enableAudio: true,
         stabilizationMode: .auto
-    )
-
-    static let highQuality = VideoConfiguration(
-        quality: .high4K,
-        maxDuration: 30.0,
-        enableAudio: true,
-        stabilizationMode: .cinematic
     )
 }
 
@@ -299,18 +287,6 @@ actor VideoRecordingService {
 
         // Clean up temp file
         try? FileManager.default.removeItem(at: videoURL)
-    }
-
-    // MARK: - Status
-
-    var recordingDuration: TimeInterval {
-        guard isRecording, let output = videoOutput else { return 0 }
-        return CMTimeGetSeconds(output.recordedDuration)
-    }
-
-    var recordingFileSize: Int64 {
-        guard isRecording, let output = videoOutput else { return 0 }
-        return output.recordedFileSize
     }
 
     // MARK: - Cleanup

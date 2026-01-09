@@ -7,6 +7,18 @@ struct HomeScreen: View {
     @State private var isVisible = false
     @State private var showingQualitySettings = false
 
+    // MARK: - Visibility Animation Helpers
+
+    private func hideContent() {
+        withAnimation(.easeOut(duration: 0.15)) { isVisible = false }
+    }
+
+    private func showContent(delay: Double = 0.2) {
+        withAnimation(.easeOut(duration: 0.8).delay(delay)) { isVisible = true }
+    }
+
+    // MARK: - Body
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -91,29 +103,21 @@ struct HomeScreen: View {
         .accessibilityLabel("Trueframe home")
         .accessibilityHint("Hold phone to your heart to start capturing photos")
         .onChange(of: appState.isCapturing) { _, isCapturing in
-            if isCapturing {
-                withAnimation(.easeOut(duration: 0.15)) { isVisible = false }
-            }
+            if isCapturing { hideContent() }
         }
         .onChange(of: appState.showingTumbleAnimation) { _, showing in
             if showing {
-                withAnimation(.easeOut(duration: 0.15)) { isVisible = false }
+                hideContent()
             } else if !appState.isCapturing {
-                // Tumble finished, fade back in
-                isVisible = false
-                withAnimation(.easeOut(duration: 0.8).delay(0.3)) { isVisible = true }
+                showContent(delay: 0.3)
             }
         }
         .onAppear {
-            if !appState.isCapturing {
-                isVisible = false
-                withAnimation(.easeOut(duration: 0.8).delay(0.2)) { isVisible = true }
-            }
+            if !appState.isCapturing { showContent() }
         }
     }
 }
 
-/// Heartbeat animation using PhaseAnimator (iOS 17+)
 private struct HeartbeatSymbol: View {
     var body: some View {
         PhaseAnimator([false, true], trigger: true) { isBright in
@@ -126,7 +130,6 @@ private struct HeartbeatSymbol: View {
     }
 }
 
-/// Capture mode selector (Photo/Burst/Video)
 struct CaptureModeSelector: View {
     @Bindable var appState: AppState
 
@@ -180,7 +183,6 @@ private struct CaptureModeButton: View {
     }
 }
 
-/// Swipeable interval picker showing all options
 struct CaptureIntervalPicker: View {
     @Bindable var settings: CaptureSettings
     @State private var dragOffset: CGFloat = 0

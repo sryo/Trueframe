@@ -1,7 +1,65 @@
-// Camera selector circles mimicking iPhone Pro camera module layout.
+// Camera lens selector view.
 
 import AVFoundation
 import SwiftUI
+
+// MARK: - Shared Helpers
+
+/// Triggers a light haptic feedback. Shared across button components.
+private func triggerHaptic() {
+    let generator = UIImpactFeedbackGenerator(style: .light)
+    generator.impactOccurred()
+}
+
+// MARK: - Cached Device Discovery
+
+/// Caches the telephoto camera discovery session to avoid expensive recreation on every render.
+private enum TelephotoDiscovery {
+    static let session = AVCaptureDevice.DiscoverySession(
+        deviceTypes: [.builtInTelephotoCamera, .builtInWideAngleCamera],
+        mediaType: .video,
+        position: .back
+    )
+
+    static let label: String = {
+        let devices = session.devices
+        let telephoto = devices.first(where: { $0.deviceType == .builtInTelephotoCamera })
+        let wide = devices.first(where: { $0.deviceType == .builtInWideAngleCamera })
+
+        // Try to get FOV from both cameras
+        if let tele = telephoto, let w = wide {
+            let teleFOV = Double(tele.activeFormat.videoFieldOfView)
+            let wideFOV = Double(w.activeFormat.videoFieldOfView)
+
+            if teleFOV > 0, wideFOV > 0 {
+                // FOV ratio approximates zoom factor
+                let teleRadians = teleFOV * .pi / 360.0
+                let wideRadians = wideFOV * .pi / 360.0
+                let ratio = tan(wideRadians) / tan(teleRadians)
+                let zoomFactor = Int(round(ratio))
+                return "\(max(2, min(zoomFactor, 10)))x"
+            }
+        }
+
+        // Fallback: estimate from telephoto FOV alone (typical wide is ~77° FOV)
+        if let tele = telephoto {
+            let teleFOV = Double(tele.activeFormat.videoFieldOfView)
+            if teleFOV > 0 {
+                let typicalWideFOV = 77.0  // Typical iPhone wide camera FOV
+                let teleRadians = teleFOV * .pi / 360.0
+                let wideRadians = typicalWideFOV * .pi / 360.0
+                let ratio = tan(wideRadians) / tan(teleRadians)
+                let zoomFactor = Int(round(ratio))
+                return "\(max(2, min(zoomFactor, 10)))x"
+            }
+        }
+
+        // No telephoto camera available
+        return "2x"
+    }()
+}
+
+// MARK: - Camera Toggle View
 
 struct CameraToggleView: View {
     @Bindable var settings: CameraSelectionSettings
@@ -11,22 +69,6 @@ struct CameraToggleView: View {
     private let flashSize: CGFloat = 24
     private let verticalSpacing: CGFloat = 6
     private let horizontalSpacing: CGFloat = 2
-
-    /// Get the actual telephoto zoom factor from the device
-    private var telephotoLabel: String {
-        let discovery = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.builtInTelephotoCamera],
-            mediaType: .video,
-            position: .back
-        )
-        if let telephoto = discovery.devices.first {
-            // Get the zoom factor relative to wide camera (1x)
-            let zoomFactor = Int(round(telephoto.maxAvailableVideoZoomFactor > 1 ?
-                min(telephoto.maxAvailableVideoZoomFactor, 10) : 5))
-            return "\(zoomFactor)x"
-        }
-        return "5x"
-    }
 
     var body: some View {
         HStack(alignment: .top, spacing: horizontalSpacing) {
@@ -55,7 +97,7 @@ struct CameraToggleView: View {
                 CameraLensButton(
                     isEnabled: settings.telephotoEnabled,
                     isSmudged: settings.isSmudged(.telephoto),
-                    label: telephotoLabel,
+                    label: TelephotoDiscovery.label,
                     accessibilityLabel: "Telephoto camera",
                     size: circleSize
                 ) {
@@ -169,11 +211,6 @@ private struct CameraLensButton: View {
         if isSmudged { state += ", Lens smudged" }
         return state
     }
-
-    private func triggerHaptic() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
-    }
 }
 
 // MARK: - Flash Button
@@ -222,11 +259,6 @@ private struct FlashButton: View {
         .accessibilityLabel("Flash")
         .accessibilityValue(isEnabled ? "On" : "Off")
         .accessibilityHint("Double tap to toggle")
-    }
-
-    private func triggerHaptic() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
     }
 }
 

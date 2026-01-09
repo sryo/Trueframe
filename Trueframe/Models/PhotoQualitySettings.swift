@@ -1,10 +1,8 @@
-// Photo quality settings - simple presets for capture sessions.
+// Photo quality settings.
 
 import AVFoundation
 import Foundation
 import Observation
-
-// MARK: - Quality Mode
 
 enum PhotoQualityMode: String, CaseIterable, Identifiable, Codable {
     case quality = "Quality"
@@ -29,7 +27,6 @@ enum PhotoQualityMode: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// Approximate file size in MB
     var approximateFileSizeMB: Double {
         switch self {
         case .quality: return 4.0
@@ -46,25 +43,12 @@ enum PhotoQualityMode: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    var enableHDR: Bool {
-        switch self {
-        case .quality, .balanced: return true
-        case .fast: return false
-        }
-    }
-
-    var enableDeepFusion: Bool {
-        switch self {
-        case .quality: return true
-        case .balanced, .fast: return false
-        }
-    }
 }
 
 // MARK: - Photo Quality Settings
 
 @Observable
-final class PhotoQualitySettings: Codable {
+final class PhotoQualitySettings {
 
     private enum Keys {
         static let mode = "photoQuality.mode"
@@ -76,40 +60,21 @@ final class PhotoQualitySettings: Codable {
 
     // MARK: - Computed Properties
 
-    var estimatedFileSizeBytes: Int {
-        Int(mode.approximateFileSizeMB * 1_000_000)
-    }
-
     var estimatedFileSizeFormatted: String {
         String(format: "~%.1f MB", mode.approximateFileSizeMB)
     }
 
     func estimatedPhotosForStorage(availableBytes: Int64) -> Int {
-        guard estimatedFileSizeBytes > 0 else { return 0 }
+        let fileSizeBytes = Int(mode.approximateFileSizeMB * 1_000_000)
+        guard fileSizeBytes > 0 else { return 0 }
         let usableBytes = max(0, availableBytes - 500_000_000) // Reserve 500MB
-        return Int(usableBytes / Int64(estimatedFileSizeBytes))
+        return Int(usableBytes / Int64(fileSizeBytes))
     }
 
     // MARK: - Initialization
 
     init() {
         loadSettings()
-    }
-
-    // MARK: - Codable
-
-    enum CodingKeys: String, CodingKey {
-        case mode
-    }
-
-    required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        mode = try container.decode(PhotoQualityMode.self, forKey: .mode)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(mode, forKey: .mode)
     }
 
     // MARK: - Persistence
@@ -156,7 +121,8 @@ final class PhotoQualitySettings: Codable {
         defer { device.unlockForConfiguration() }
 
         if device.activeFormat.isVideoHDRSupported {
-            device.automaticallyAdjustsVideoHDREnabled = mode.enableHDR
+            // Enable HDR for quality and balanced modes, disable for fast mode
+            device.automaticallyAdjustsVideoHDREnabled = mode != .fast
         }
     }
 

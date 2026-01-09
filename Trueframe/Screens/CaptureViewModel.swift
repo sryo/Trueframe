@@ -4,35 +4,67 @@ import Combine
 import SwiftUI
 import UIKit
 
+// Protocol for storage monitoring to enable testing
+protocol StorageMonitoring {
+    var hasAdequateSpace: Bool { get }
+    func startMonitoring()
+    func stopMonitoring()
+}
+
+extension StorageMonitor: StorageMonitoring {}
+
 @MainActor
 final class CaptureViewModel: ObservableObject {
-    @Published private(set) var isCapturing = false
-    @Published private(set) var photoCount = 0
+    private(set) var isCapturing = false
+    private(set) var photoCount = 0
+    private(set) var consecutiveDarkFrames = 0
 
-    private static let maxDarkFrames = 3
+    static let maxDarkFrames = 3
     private static let smudgeCheckInterval: TimeInterval = 3.0  // Check every 3 seconds
 
     private var cameraService: CameraService?
     private let hapticService = HapticHeartbeatService()
-    private let storageMonitor = StorageMonitor()
-    private let photoCache = PhotoCache.shared
-    private let livePhotoService = LivePhotoService.shared
+    private let storageMonitor: StorageMonitoring
+    private let photoCache: PhotoCache
     private let photoAnalyzer = PhotoAnalyzer.shared
 
     private var captureTask: Task<Void, Never>?
     private var smudgeCheckTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
-    private var photoIDs: [UUID] = []  // Lightweight IDs instead of full UIImages
     private weak var appState: AppState?
-    private var hasEnded = false
-    private var consecutiveDarkFrames = 0
+    private(set) var hasEnded = false
     private var memoryWarningObserver: NSObjectProtocol?
 
     // Settings-driven values
-    private let maxPhotoCount = 50
+    let maxPhotoCount: Int
     private var captureInterval: Double { appState?.captureSettings.captureInterval ?? 1.0 }
-    private var livePhotosEnabled: Bool { appState?.captureSettings.livePhotosEnabled ?? false }
     private var smartSelectionEnabled: Bool { appState?.captureSettings.smartSelectionEnabled ?? true }
+
+    // Injected photo publisher for testing
+    private var injectedPhotoPublisher: AnyPublisher<CapturedPhoto, Never>?
+
+    init(
+        storageMonitor: StorageMonitoring = StorageMonitor(),
+        photoCache: PhotoCache = .shared,
+        maxPhotoCount: Int = 50
+    ) {
+        self.storageMonitor = storageMonitor
+        self.photoCache = photoCache
+        self.maxPhotoCount = maxPhotoCount
+    }
+
+    // Test-only initializer that accepts an injected photo publisher
+    #if DEBUG
+    convenience init(
+        storageMonitor: StorageMonitoring,
+        photoCache: PhotoCache,
+        maxPhotoCount: Int,
+        photoPublisher: AnyPublisher<CapturedPhoto, Never>
+    ) {
+        self.init(storageMonitor: storageMonitor, photoCache: photoCache, maxPhotoCount: maxPhotoCount)
+        self.injectedPhotoPublisher = photoPublisher
+    }
+    #endif
 
     func onAppear(appState: AppState) {
         self.appState = appState
@@ -56,7 +88,9 @@ final class CaptureViewModel: ObservableObject {
             .sink { [weak self] _ in self?.endCaptureSession() }
             .store(in: &cancellables)
 
-        cameraService?.capturedPhoto
+        // Use injected publisher for testing, or camera service publisher
+        let photoPublisher = injectedPhotoPublisher ?? cameraService?.capturedPhoto
+        photoPublisher?
             .receive(on: DispatchQueue.main)
             .sink { [weak self] photo in self?.handleCapturedPhoto(photo) }
             .store(in: &cancellables)
@@ -95,7 +129,6 @@ final class CaptureViewModel: ObservableObject {
 
         isCapturing = true
         photoCount = 0
-        photoIDs = []
         consecutiveDarkFrames = 0
 
         // Update haptic tempo based on capture interval
@@ -166,36 +199,8 @@ final class CaptureViewModel: ObservableObject {
         // For fast intervals (<1s), use video frame capture instead of photo
         let isBurstMode = captureInterval < 1.0
 
-        if isBurstMode {
-            await runBurstCaptureLoop()
-        } else {
-            await runPhotoCaptureLoop()
-        }
-    }
-
-    private func runPhotoCaptureLoop() async {
-        // Capture first photo immediately
-        try? await cameraService?.capturePhoto()
-
-        while !Task.isCancelled && isCapturing {
-            try? await Task.sleep(for: .seconds(captureInterval))
-
-            guard !Task.isCancelled && isCapturing else { break }
-            guard storageMonitor.hasAdequateSpace else {
-                endCaptureSession()
-                return
-            }
-
-            try? await cameraService?.capturePhoto()
-        }
-    }
-
-    private func runBurstCaptureLoop() async {
         // Capture first frame immediately
-        if let image = await cameraService?.captureFrame() {
-            let captured = CapturedPhoto(image: image)
-            handleCapturedPhoto(captured)
-        }
+        await captureOnce(isBurstMode: isBurstMode)
 
         while !Task.isCancelled && isCapturing {
             try? await Task.sleep(for: .seconds(captureInterval))
@@ -206,10 +211,18 @@ final class CaptureViewModel: ObservableObject {
                 return
             }
 
+            await captureOnce(isBurstMode: isBurstMode)
+        }
+    }
+
+    private func captureOnce(isBurstMode: Bool) async {
+        if isBurstMode {
             if let image = await cameraService?.captureFrame() {
                 let captured = CapturedPhoto(image: image)
                 handleCapturedPhoto(captured)
             }
+        } else {
+            try? await cameraService?.capturePhoto()
         }
     }
 
@@ -230,11 +243,10 @@ final class CaptureViewModel: ObservableObject {
         // Store to disk cache and check limits
         let maxPhotos = maxPhotoCount
         Task {
-            let photoID = await photoCache.store(photo.image, id: photo.id)
+            _ = await photoCache.store(photo.image, id: photo.id)
             await MainActor.run { [weak self] in
                 guard let self, !self.hasEnded else { return }
-                self.photoIDs.append(photoID)
-                self.photoCount = self.photoIDs.count
+                self.photoCount += 1
 
                 // Check limit after updating count
                 if self.photoCount >= maxPhotos {
@@ -274,4 +286,28 @@ final class CaptureViewModel: ObservableObject {
             settings.setSmudged(settings.selectedCamera, isSmudged: result.isSmudged)
         }
     }
+
+    // MARK: - Test Support
+
+    #if DEBUG
+    // Expose handleCapturedPhoto for testing
+    func testHandleCapturedPhoto(_ photo: CapturedPhoto) {
+        handleCapturedPhoto(photo)
+    }
+
+    // Trigger end capture session for testing
+    func testEndCaptureSession() {
+        endCaptureSession()
+    }
+
+    // Force start capturing state for testing (bypasses camera setup)
+    func testSetCapturing(_ capturing: Bool) {
+        isCapturing = capturing
+        if capturing {
+            hasEnded = false
+            photoCount = 0
+            consecutiveDarkFrames = 0
+        }
+    }
+    #endif
 }

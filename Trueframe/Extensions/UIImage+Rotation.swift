@@ -6,15 +6,16 @@ extension UIImage {
     func correctedForOrientation() -> UIImage {
         guard imageOrientation != .up else { return self }
 
-        UIGraphicsBeginImageContextWithOptions(size, false, scale)
-        draw(in: CGRect(origin: .zero, size: size))
-        let normalizedImage = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
 
-        return normalizedImage ?? self
+        return renderer.image { _ in
+            draw(in: CGRect(origin: .zero, size: size))
+        }
     }
 
-    /// Returns average brightness (0.0 = black, 1.0 = white)
+    // Returns average brightness (0.0 = black, 1.0 = white)
     func averageBrightness() -> CGFloat {
         guard let cgImage = self.cgImage else { return 0.5 }
 
@@ -39,7 +40,6 @@ extension UIImage {
         return CGFloat(total) / CGFloat(pixels.count * 255)
     }
 
-    /// Check if image is too dark (likely captured in pocket)
     var isPitchBlack: Bool {
         averageBrightness() < 0.05  // Less than 5% brightness
     }

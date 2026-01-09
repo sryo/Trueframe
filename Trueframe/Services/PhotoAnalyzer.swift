@@ -1,11 +1,9 @@
-// Vision framework integration for smart photo analysis and selection.
-// Scores photos based on face quality, aesthetics, and technical factors.
+// Analyzes photos using Vision framework for quality scoring.
 
 import CoreImage
 import UIKit
 import Vision
 
-/// Photo quality metrics from Vision analysis
 struct PhotoQualityScore: Sendable {
     let overallScore: Float        // Combined score 0-1
     let faceQuality: Float?        // Face capture quality 0-1 (nil if no faces)
@@ -34,6 +32,11 @@ struct LensSmudgeResult: Sendable {
 /// Analyzes photos using Vision framework for intelligent selection.
 actor PhotoAnalyzer {
     static let shared = PhotoAnalyzer()
+
+    // MARK: - Shared Resources
+
+    /// Shared CIContext for image processing operations
+    private let ciContext = CIContext()
 
     // MARK: - Single Photo Analysis
 
@@ -149,45 +152,67 @@ actor PhotoAnalyzer {
     }
 
     private func detectFaces(in cgImage: CGImage) async -> FaceAnalysisResult {
-        await withCheckedContinuation { continuation in
-            let request = VNDetectFaceCaptureQualityRequest { request, error in
-                guard error == nil,
-                      let observations = request.results as? [VNFaceObservation],
-                      !observations.isEmpty else {
-                    continuation.resume(returning: FaceAnalysisResult(
-                        hasFaces: false,
-                        count: 0,
-                        bestFaceQuality: nil,
-                        primaryConfidence: nil
-                    ))
-                    return
-                }
+        // Use a non-completion-handler approach to avoid double-resumption
+        // VNImageRequestHandler.perform() is synchronous, so we don't need withCheckedContinuation
+        let request = VNDetectFaceCaptureQualityRequest()
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
 
-                // Find the best face quality score
-                let qualities = observations.compactMap { $0.faceCaptureQuality }
-                let bestQuality = qualities.max()
-                let primaryConfidence = observations.first?.confidence
+        do {
+            try handler.perform([request])
 
-                continuation.resume(returning: FaceAnalysisResult(
-                    hasFaces: true,
-                    count: observations.count,
-                    bestFaceQuality: bestQuality,
-                    primaryConfidence: primaryConfidence
-                ))
-            }
-
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                continuation.resume(returning: FaceAnalysisResult(
+            guard let observations = request.results, !observations.isEmpty else {
+                return FaceAnalysisResult(
                     hasFaces: false,
                     count: 0,
                     bestFaceQuality: nil,
                     primaryConfidence: nil
-                ))
+                )
             }
+
+            // Find the best face quality score
+            let qualities = observations.compactMap { $0.faceCaptureQuality }
+            let bestQuality = qualities.max()
+            let primaryConfidence = observations.first?.confidence
+
+            return FaceAnalysisResult(
+                hasFaces: true,
+                count: observations.count,
+                bestFaceQuality: bestQuality,
+                primaryConfidence: primaryConfidence
+            )
+        } catch {
+            return FaceAnalysisResult(
+                hasFaces: false,
+                count: 0,
+                bestFaceQuality: nil,
+                primaryConfidence: nil
+            )
         }
+    }
+
+    // MARK: - Image Processing Helpers
+
+    /// Calculates the average color of an image region using CIAreaAverage filter
+    /// - Parameter image: The CIImage to analyze
+    /// - Returns: RGBA bitmap values, or nil if filter setup fails
+    private func calculateAreaAverage(for image: CIImage) -> [UInt8]? {
+        let extentVector = CIVector(
+            x: image.extent.origin.x,
+            y: image.extent.origin.y,
+            z: image.extent.size.width,
+            w: image.extent.size.height
+        )
+
+        guard let areaAverageFilter = CIFilter(name: "CIAreaAverage") else { return nil }
+        areaAverageFilter.setValue(image, forKey: kCIInputImageKey)
+        areaAverageFilter.setValue(extentVector, forKey: kCIInputExtentKey)
+
+        guard let avgImage = areaAverageFilter.outputImage else { return nil }
+
+        var bitmap = [UInt8](repeating: 0, count: 4)
+        ciContext.render(avgImage, toBitmap: &bitmap, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1), format: .RGBA8, colorSpace: nil)
+
+        return bitmap
     }
 
     // MARK: - Sharpness Analysis
@@ -195,8 +220,6 @@ actor PhotoAnalyzer {
     private func measureSharpness(in cgImage: CGImage) async -> Float {
         // Use Laplacian variance as sharpness metric
         let ciImage = CIImage(cgImage: cgImage)
-
-        let context = CIContext()
 
         // Apply edge detection filter
         guard let edgeFilter = CIFilter(name: "CIEdges") else { return 0.5 }
@@ -206,21 +229,7 @@ actor PhotoAnalyzer {
         guard let edgeImage = edgeFilter.outputImage else { return 0.5 }
 
         // Calculate average intensity of edges
-        let extentVector = CIVector(
-            x: edgeImage.extent.origin.x,
-            y: edgeImage.extent.origin.y,
-            z: edgeImage.extent.size.width,
-            w: edgeImage.extent.size.height
-        )
-
-        guard let areaAverageFilter = CIFilter(name: "CIAreaAverage") else { return 0.5 }
-        areaAverageFilter.setValue(edgeImage, forKey: kCIInputImageKey)
-        areaAverageFilter.setValue(extentVector, forKey: kCIInputExtentKey)
-
-        guard let avgImage = areaAverageFilter.outputImage else { return 0.5 }
-
-        var bitmap = [UInt8](repeating: 0, count: 4)
-        context.render(avgImage, toBitmap: &bitmap, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1), format: .RGBA8, colorSpace: nil)
+        guard let bitmap = calculateAreaAverage(for: edgeImage) else { return 0.5 }
 
         // Normalize edge intensity to 0-1 score
         let intensity = Float(bitmap[0]) / 255.0
@@ -232,25 +241,8 @@ actor PhotoAnalyzer {
     private func measureBrightness(in cgImage: CGImage) async -> Float {
         let ciImage = CIImage(cgImage: cgImage)
 
-        let context = CIContext()
-        let extent = ciImage.extent
-
         // Calculate average brightness
-        let extentVector = CIVector(
-            x: extent.origin.x,
-            y: extent.origin.y,
-            z: extent.size.width,
-            w: extent.size.height
-        )
-
-        guard let areaAverageFilter = CIFilter(name: "CIAreaAverage") else { return 0.5 }
-        areaAverageFilter.setValue(ciImage, forKey: kCIInputImageKey)
-        areaAverageFilter.setValue(extentVector, forKey: kCIInputExtentKey)
-
-        guard let avgImage = areaAverageFilter.outputImage else { return 0.5 }
-
-        var bitmap = [UInt8](repeating: 0, count: 4)
-        context.render(avgImage, toBitmap: &bitmap, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1), format: .RGBA8, colorSpace: nil)
+        guard let bitmap = calculateAreaAverage(for: ciImage) else { return 0.5 }
 
         // Calculate luminance
         let r = Float(bitmap[0]) / 255.0

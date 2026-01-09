@@ -28,7 +28,6 @@ struct ContentView: View {
 
             if appState.isCapturing {
                 captureScreen
-                    .environment(appState)
                     .transition(.opacity)
             }
 
@@ -49,7 +48,6 @@ struct ContentView: View {
         .statusBarHidden(appState.isCapturing || appState.showingTumbleAnimation)
     }
 
-    /// Returns the appropriate capture screen based on current mode
     @ViewBuilder
     private var captureScreen: some View {
         switch appState.captureMode {
