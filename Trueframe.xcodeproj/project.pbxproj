@@ -13,7 +13,9 @@
 		147C1BE8E83C057819AA76F4 /* SessionPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F2BD2E5F6B9659C948C27A /* SessionPhase.swift */; };
 		1894BE47C309285EBC4EED2E /* PhotoScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A7B923ADAF770503E76D35 /* PhotoScorer.swift */; };
 		25CD047AC6F0CE97891DBE6A /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45F88A0D2E5D6E0601CA4012 /* HomeScreen.swift */; };
+		26036F83068A8D247CC40DB7 /* DateMoonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EF511BB834D317873E458E /* DateMoonTests.swift */; };
 		2B71E5D25B6F941CDD419D6F /* HapticHeartbeatServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 438F5F76D84F93DE366CF948 /* HapticHeartbeatServiceTests.swift */; };
+		2E909278A687895BAC4FACCA /* Date+Moon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB6590390B6FA1EB4938EC7 /* Date+Moon.swift */; };
 		33B66294CDCF45EC4D97157D /* TestDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EF739F7BC379067BC24CB9 /* TestDefaults.swift */; };
 		3FCB63F98B87439B234F2333 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5B6A3E6CA82BA60696DEE1 /* SessionStore.swift */; };
 		501CE058C4F04FD4D11667DD /* TumbleAnimationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372169D1FB2AF2C617D9BAFD /* TumbleAnimationViewController.swift */; };
@@ -35,6 +37,7 @@
 		D04C96955C4B746ECE670154 /* SessionCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F2AB331548FEEECD2A816A /* SessionCoordinatorTests.swift */; };
 		DC36F64FA645BABB5AA7A988 /* FileManager+Safe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB10D931FC9F12980E468C6 /* FileManager+Safe.swift */; };
 		EABA5493841228051E503A22 /* CameraSelectionSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAF5406BC81B3D659BA6B0BD /* CameraSelectionSettings.swift */; };
+		F3E28ECDFF633943860653EE /* MotionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86BF79DABD7CCCD14CC1BC57 /* MotionMonitor.swift */; };
 		F5A5AB96F9ADCD1755091E53 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E6E1348F14D88D6AC5B1D0F3 /* Assets.xcassets */; };
 		F7587F20238B39596C6F4940 /* FakeCaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495DBAFF257C67559AA64DB6 /* FakeCaptureEngine.swift */; };
 		FF838EFFE0F714485F006A4B /* ProximityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07B84C3F82081BC13B63269 /* ProximityMonitor.swift */; };
@@ -53,6 +56,7 @@
 /* Begin PBXFileReference section */
 		07D01C68ADC7986D76FDF18F /* TumbleAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TumbleAnimationView.swift; sourceTree = "<group>"; };
 		0A6C69B1A8DC64557468C4F8 /* CaptureSessionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSessionIntent.swift; sourceTree = "<group>"; };
+		10EF511BB834D317873E458E /* DateMoonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateMoonTests.swift; sourceTree = "<group>"; };
 		1A5B6A3E6CA82BA60696DEE1 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		1FE66E3C192F41D9824751E6 /* UIImage+Rotation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIImage+Rotation.swift"; sourceTree = "<group>"; };
 		2198256E48F96174FC3C772F /* LibrarySaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySaver.swift; sourceTree = "<group>"; };
@@ -66,9 +70,11 @@
 		4CB10D931FC9F12980E468C6 /* FileManager+Safe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FileManager+Safe.swift"; sourceTree = "<group>"; };
 		5344BBBE80F986A9F3D63E43 /* CaptureSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSettings.swift; sourceTree = "<group>"; };
 		5D24D0B6CDE8D7034FB135A6 /* TrueframeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrueframeApp.swift; sourceTree = "<group>"; };
+		5DB6590390B6FA1EB4938EC7 /* Date+Moon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Moon.swift"; sourceTree = "<group>"; };
 		6938C587B7D3350F551DE87F /* CaptureScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureScreen.swift; sourceTree = "<group>"; };
 		736E0C47626F1423B573EC1B /* CurationPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurationPolicyTests.swift; sourceTree = "<group>"; };
 		7703583FDF6B52D3DD3BF145 /* SessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreTests.swift; sourceTree = "<group>"; };
+		86BF79DABD7CCCD14CC1BC57 /* MotionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionMonitor.swift; sourceTree = "<group>"; };
 		967DED7DAEE7D665444FD5F4 /* CaptureSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSettingsTests.swift; sourceTree = "<group>"; };
 		B02F74899A1AF7DA7E810C60 /* HapticHeartbeatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticHeartbeatService.swift; sourceTree = "<group>"; };
 		B0BF5C91BD80504906F30C71 /* CameraToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraToggleView.swift; sourceTree = "<group>"; };
@@ -92,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				D6860DD68D57474925CD8BBC /* CaptureEngine.swift */,
+				86BF79DABD7CCCD14CC1BC57 /* MotionMonitor.swift */,
 				D07B84C3F82081BC13B63269 /* ProximityMonitor.swift */,
 			);
 			path = Capture;
@@ -103,6 +110,7 @@
 				EF6BD3D2C74662E0011CB0F5 /* CameraSelectionSettingsTests.swift */,
 				967DED7DAEE7D665444FD5F4 /* CaptureSettingsTests.swift */,
 				736E0C47626F1423B573EC1B /* CurationPolicyTests.swift */,
+				10EF511BB834D317873E458E /* DateMoonTests.swift */,
 				438F5F76D84F93DE366CF948 /* HapticHeartbeatServiceTests.swift */,
 				C7F2AB331548FEEECD2A816A /* SessionCoordinatorTests.swift */,
 				7703583FDF6B52D3DD3BF145 /* SessionStoreTests.swift */,
@@ -131,6 +139,7 @@
 		26E54B557867382AF09B8AFC /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				5DB6590390B6FA1EB4938EC7 /* Date+Moon.swift */,
 				4CB10D931FC9F12980E468C6 /* FileManager+Safe.swift */,
 				1FE66E3C192F41D9824751E6 /* UIImage+Rotation.swift */,
 			);
@@ -345,6 +354,7 @@
 				C8A5C339ED1BC22C276A1AA4 /* CameraSelectionSettingsTests.swift in Sources */,
 				01C74947F64F5402D7B2A5D3 /* CaptureSettingsTests.swift in Sources */,
 				BC38A293B472FC0BD3DEC736 /* CurationPolicyTests.swift in Sources */,
+				26036F83068A8D247CC40DB7 /* DateMoonTests.swift in Sources */,
 				F7587F20238B39596C6F4940 /* FakeCaptureEngine.swift in Sources */,
 				2B71E5D25B6F941CDD419D6F /* HapticHeartbeatServiceTests.swift in Sources */,
 				D04C96955C4B746ECE670154 /* SessionCoordinatorTests.swift in Sources */,
@@ -366,10 +376,12 @@
 				A5BF99229DC03CA99403EA4B /* CaptureSessionIntent.swift in Sources */,
 				C06EFB4148C55BE1B3516172 /* CaptureSettings.swift in Sources */,
 				93B37D063BF136158AE4F803 /* CurationPolicy.swift in Sources */,
+				2E909278A687895BAC4FACCA /* Date+Moon.swift in Sources */,
 				DC36F64FA645BABB5AA7A988 /* FileManager+Safe.swift in Sources */,
 				BC8114FDE2DE9B40A44214CF /* HapticHeartbeatService.swift in Sources */,
 				25CD047AC6F0CE97891DBE6A /* HomeScreen.swift in Sources */,
 				59939ECB7BA5C2D0F1407C19 /* LibrarySaver.swift in Sources */,
+				F3E28ECDFF633943860653EE /* MotionMonitor.swift in Sources */,
 				1894BE47C309285EBC4EED2E /* PhotoScorer.swift in Sources */,
 				FF838EFFE0F714485F006A4B /* ProximityMonitor.swift in Sources */,
 				9D24043D34428CA446EF0922 /* SessionCoordinator.swift in Sources */,

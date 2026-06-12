@@ -86,13 +86,35 @@ struct HomeScreen: View {
 }
 
 private struct HeartbeatSymbol: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var beat = 0
+
+    private static let restingBeatInterval = 60.0 / 52  // a resting heart
+
     var body: some View {
-        PhaseAnimator([false, true], trigger: true) { isBright in
+        // The heart waxes with the moon
+        let (dim, bright) = Date.now.isNearFullMoon ? (0.5, 0.9) : (0.30, 0.6)
+
+        PhaseAnimator([false, true], trigger: beat) { isBright in
             Text("♥")
                 .font(.system(size: 8))
-                .foregroundStyle(.white.opacity(isBright ? 0.6 : 0.30))
+                .foregroundStyle(.white.opacity(isBright ? bright : dim))
         } animation: { phase in
             phase ? .easeIn(duration: 0.05) : .easeOut(duration: 0.85)
+        }
+        .task {
+            guard !reduceMotion else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(Self.restingBeatInterval))
+                guard !Task.isCancelled else { return }
+                // Once in a long while, a real heart skips
+                if Int.random(in: 0..<500) == 0 {
+                    try? await Task.sleep(for: .seconds(1.2))
+                    beat += 1
+                    try? await Task.sleep(for: .seconds(0.25))
+                }
+                beat += 1
+            }
         }
     }
 }

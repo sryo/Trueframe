@@ -52,6 +52,7 @@ actor CaptureEngine: CaptureEngineProtocol {
     private var configuredLens: BackCameraType?
     private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
 
+    private let motion = MotionMonitor()
     private var isRunning = false
     private var cadenceTask: Task<Void, Never>?
     private var continuation: AsyncStream<CaptureEvent>.Continuation?
@@ -81,6 +82,7 @@ actor CaptureEngine: CaptureEngineProtocol {
         isRunning = false
         cadenceTask?.cancel()
         cadenceTask = nil
+        await motion.stop()
 
         // Drain in-flight captures so their events reach the stream, bounded at 2s.
         for _ in 0..<80 where !inFlightDelegates.isEmpty {
@@ -178,9 +180,13 @@ actor CaptureEngine: CaptureEngineProtocol {
             return
         }
         if !session.isRunning { session.startRunning() }
+        await motion.start()
 
         while isRunning && !Task.isCancelled {
             await waitUntilReadyForCapture()
+            // Fire in a micro-window of stillness between steps and breaths;
+            // the timeout keeps the cadence floor for a constantly moving user
+            await motion.waitForStillness(timeout: .milliseconds(400))
             guard isRunning && !Task.isCancelled else { break }
             captureOne(configuration)
             // The interval is the floor; readiness gating above stretches the
