@@ -3,18 +3,6 @@
 import UIKit
 
 extension UIImage {
-    func correctedForOrientation() -> UIImage {
-        guard imageOrientation != .up else { return self }
-
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = scale
-        let renderer = UIGraphicsImageRenderer(size: size, format: format)
-
-        return renderer.image { _ in
-            draw(in: CGRect(origin: .zero, size: size))
-        }
-    }
-
     // Returns average brightness (0.0 = black, 1.0 = white)
     func averageBrightness() -> CGFloat {
         guard let cgImage = self.cgImage else { return 0.5 }

@@ -4,57 +4,46 @@ import SwiftUI
 
 @main
 struct TrueframeApp: App {
-    @State private var appState = AppState()
+    @State private var coordinator = SessionCoordinator()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(appState)
+                .environment(coordinator)
                 .preferredColorScheme(.dark)
                 .persistentSystemOverlays(.hidden)
                 .task {
-                    await appState.checkAndRequestPermissions()
+                    await coordinator.start()
                 }
         }
     }
 }
 
 struct ContentView: View {
-    @Environment(AppState.self) private var appState
+    @Environment(SessionCoordinator.self) private var coordinator
 
     var body: some View {
         ZStack {
             HomeScreen()
 
-            if appState.isCapturing {
-                captureScreen
+            if coordinator.isCapturing {
+                CaptureScreen()
                     .transition(.opacity)
             }
 
             // Tumble animation
-            if appState.showingTumbleAnimation {
+            if coordinator.showingTumbleAnimation {
                 TumbleAnimationView(
-                    photos: appState.sessionPhotos,
+                    photos: coordinator.sessionPreviews,
                     onComplete: {
-                        appState.tumbleAnimationComplete()
+                        coordinator.tumbleAnimationComplete()
                     }
                 )
                 .transition(.opacity)
             }
-
         }
-        .animation(.easeInOut(duration: 0.3), value: appState.isCapturing)
-        .animation(.easeInOut(duration: 0.3), value: appState.showingTumbleAnimation)
-        .statusBarHidden(appState.isCapturing || appState.showingTumbleAnimation)
-    }
-
-    @ViewBuilder
-    private var captureScreen: some View {
-        switch appState.captureMode {
-        case .photo:
-            CaptureScreen()
-        case .video:
-            VideoCaptureScreen()
-        }
+        .animation(.easeInOut(duration: 0.3), value: coordinator.isCapturing)
+        .animation(.easeInOut(duration: 0.3), value: coordinator.showingTumbleAnimation)
+        .statusBarHidden(coordinator.isCapturing || coordinator.showingTumbleAnimation)
     }
 }

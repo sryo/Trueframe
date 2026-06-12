@@ -3,14 +3,8 @@
 import CoreHaptics
 import UIKit
 
-protocol HapticServiceProtocol: AnyObject {
-    func prepareForSession() async
-    func playHeartbeat()
-    func updateTempo(interval: TimeInterval)
-    func endSession()
-}
-
-final class HapticHeartbeatService: HapticServiceProtocol {
+@MainActor
+final class HapticHeartbeatService {
     private var engine: CHHapticEngine?
     private var player: CHHapticPatternPlayer?
     private var isReady = false
@@ -39,10 +33,6 @@ final class HapticHeartbeatService: HapticServiceProtocol {
     func playHeartbeat() {
         guard isReady else { return }
         try? player?.start(atTime: CHHapticTimeImmediate)
-    }
-
-    func updateTempo(interval: TimeInterval) {
-        // Not used - consistent heartbeat feel
     }
 
     func endSession() {
@@ -78,9 +68,5 @@ final class HapticHeartbeatService: HapticServiceProtocol {
     private func restart() {
         isReady = false
         Task { await prepareForSession() }
-    }
-
-    deinit {
-        engine?.stop(completionHandler: nil)
     }
 }

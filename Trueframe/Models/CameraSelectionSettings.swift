@@ -9,6 +9,7 @@ enum BackCameraType: String, CaseIterable, Equatable, Sendable {
     case telephoto
 }
 
+@MainActor
 @Observable
 final class CameraSelectionSettings {
     private enum Keys {
@@ -23,32 +24,6 @@ final class CameraSelectionSettings {
     var flashEnabled: Bool {
         didSet { UserDefaults.standard.set(flashEnabled, forKey: Keys.flash) }
     }
-
-    // MARK: - Lens Smudge Detection
-
-    var smudgedLenses: Set<BackCameraType> = []
-
-    func isSmudged(_ camera: BackCameraType) -> Bool {
-        smudgedLenses.contains(camera)
-    }
-
-    func setSmudged(_ camera: BackCameraType, isSmudged: Bool) {
-        if isSmudged {
-            smudgedLenses.insert(camera)
-        } else {
-            smudgedLenses.remove(camera)
-        }
-    }
-
-    /// Clear all smudge states
-    func clearSmudgeStates() {
-        smudgedLenses.removeAll()
-    }
-
-    // Convenience properties for backwards compatibility
-    var wideEnabled: Bool { selectedCamera == .wide }
-    var ultrawideEnabled: Bool { selectedCamera == .ultrawide }
-    var telephotoEnabled: Bool { selectedCamera == .telephoto }
 
     init() {
         let defaults = UserDefaults.standard

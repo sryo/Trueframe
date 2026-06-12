@@ -4,42 +4,27 @@ import XCTest
 @testable import Trueframe
 
 /// Tests for CameraSelectionSettings functionality.
+@MainActor
 final class CameraSelectionSettingsTests: XCTestCase {
 
     var sut: CameraSelectionSettings!
 
-    override func setUp() {
-        super.setUp()
-        // Clear UserDefaults for clean test state
-        clearUserDefaults()
+    override func setUp() async throws {
+        try await super.setUp()
+        TestDefaults.clear()
         sut = CameraSelectionSettings()
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         sut = nil
-        clearUserDefaults()
-        super.tearDown()
-    }
-
-    private func clearUserDefaults() {
-        let defaults = UserDefaults.standard
-        defaults.removeObject(forKey: "camera.selected")
-        defaults.removeObject(forKey: "camera.flash")
+        TestDefaults.clear()
+        try await super.tearDown()
     }
 
     // MARK: - Default Values Tests
 
     func testDefaultValues_wideSelected() {
         XCTAssertEqual(sut.selectedCamera, .wide, "Wide should be selected by default")
-        XCTAssertTrue(sut.wideEnabled, "Wide should be enabled by default")
-    }
-
-    func testDefaultValues_ultrawideNotSelected() {
-        XCTAssertFalse(sut.ultrawideEnabled, "Ultrawide should not be enabled by default")
-    }
-
-    func testDefaultValues_telephotoNotSelected() {
-        XCTAssertFalse(sut.telephotoEnabled, "Telephoto should not be enabled by default")
     }
 
     func testDefaultValues_flashDisabled() {
@@ -52,19 +37,13 @@ final class CameraSelectionSettingsTests: XCTestCase {
         sut.select(.ultrawide)
 
         XCTAssertEqual(sut.selectedCamera, .ultrawide)
-        XCTAssertTrue(sut.ultrawideEnabled)
-        XCTAssertFalse(sut.wideEnabled)
-        XCTAssertFalse(sut.telephotoEnabled)
     }
 
-    func testSelect_disablesPreviousCamera() {
+    func testSelect_replacesPreviousSelection() {
         sut.select(.wide)
-        XCTAssertTrue(sut.wideEnabled)
-
         sut.select(.telephoto)
 
-        XCTAssertFalse(sut.wideEnabled, "Wide should be disabled after selecting telephoto")
-        XCTAssertTrue(sut.telephotoEnabled)
+        XCTAssertEqual(sut.selectedCamera, .telephoto, "Selection is mutually exclusive")
     }
 
     // MARK: - Persistence Tests
@@ -86,29 +65,6 @@ final class CameraSelectionSettingsTests: XCTestCase {
         XCTAssertTrue(newInstance.flashEnabled, "Flash setting should persist")
     }
 
-    // MARK: - isEnabled Tests
-
-    func testIsEnabled_wide() {
-        sut.select(.wide)
-        XCTAssertTrue(sut.isEnabled(.wide))
-        XCTAssertFalse(sut.isEnabled(.ultrawide))
-        XCTAssertFalse(sut.isEnabled(.telephoto))
-    }
-
-    func testIsEnabled_ultrawide() {
-        sut.select(.ultrawide)
-        XCTAssertTrue(sut.isEnabled(.ultrawide))
-        XCTAssertFalse(sut.isEnabled(.wide))
-        XCTAssertFalse(sut.isEnabled(.telephoto))
-    }
-
-    func testIsEnabled_telephoto() {
-        sut.select(.telephoto)
-        XCTAssertTrue(sut.isEnabled(.telephoto))
-        XCTAssertFalse(sut.isEnabled(.wide))
-        XCTAssertFalse(sut.isEnabled(.ultrawide))
-    }
-
     // MARK: - BackCameraType Tests
 
     func testBackCameraType_allCases() {
@@ -120,21 +76,10 @@ final class CameraSelectionSettingsTests: XCTestCase {
         XCTAssertTrue(allCases.contains(.telephoto))
     }
 
-    func testBackCameraType_isEquatable() {
-        XCTAssertEqual(BackCameraType.wide, BackCameraType.wide)
-        XCTAssertNotEqual(BackCameraType.wide, BackCameraType.ultrawide)
-    }
-
-    func testBackCameraType_rawValue() {
-        XCTAssertEqual(BackCameraType.wide.rawValue, "wide")
-        XCTAssertEqual(BackCameraType.ultrawide.rawValue, "ultrawide")
-        XCTAssertEqual(BackCameraType.telephoto.rawValue, "telephoto")
-    }
-
-    func testBackCameraType_initFromRawValue() {
-        XCTAssertEqual(BackCameraType(rawValue: "wide"), .wide)
-        XCTAssertEqual(BackCameraType(rawValue: "ultrawide"), .ultrawide)
-        XCTAssertEqual(BackCameraType(rawValue: "telephoto"), .telephoto)
+    func testBackCameraType_rawValueRoundTrip() {
+        for camera in BackCameraType.allCases {
+            XCTAssertEqual(BackCameraType(rawValue: camera.rawValue), camera)
+        }
         XCTAssertNil(BackCameraType(rawValue: "invalid"))
     }
 }

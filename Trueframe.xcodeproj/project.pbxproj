@@ -7,51 +7,36 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		001EF5D53BCF2C83D3501958 /* CaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6860DD68D57474925CD8BBC /* CaptureEngine.swift */; };
 		017398BD9210842B9E055B7C /* CameraToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0BF5C91BD80504906F30C71 /* CameraToggleView.swift */; };
 		01C74947F64F5402D7B2A5D3 /* CaptureSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967DED7DAEE7D665444FD5F4 /* CaptureSettingsTests.swift */; };
-		1129FDE2C4173F557D69AE8B /* StorageMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1EB82B86A0F9A036C6FBAA /* StorageMonitor.swift */; };
-		16EE5D66EE568ADE18E6F436 /* CapturedPhoto.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA834FE60595B27C0C6FAEE0 /* CapturedPhoto.swift */; };
-		187E07420436EDDF7506962B /* MockCameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D77852773449A1C87871F02 /* MockCameraService.swift */; };
-		1D4D7CD3E496028EF0D7881D /* VideoCaptureScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0798505EC911E899D79119D /* VideoCaptureScreen.swift */; };
+		147C1BE8E83C057819AA76F4 /* SessionPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F2BD2E5F6B9659C948C27A /* SessionPhase.swift */; };
+		1894BE47C309285EBC4EED2E /* PhotoScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A7B923ADAF770503E76D35 /* PhotoScorer.swift */; };
 		25CD047AC6F0CE97891DBE6A /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45F88A0D2E5D6E0601CA4012 /* HomeScreen.swift */; };
-		2965422D5E252F85BC6DA264 /* CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88140D3C0242EF6FBF616C3B /* CameraService.swift */; };
-		2977B7EBEE376D41A1D2171A /* PhotoQualitySettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ACA5A4126FFF3DC1FDCF66F /* PhotoQualitySettings.swift */; };
 		2B71E5D25B6F941CDD419D6F /* HapticHeartbeatServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 438F5F76D84F93DE366CF948 /* HapticHeartbeatServiceTests.swift */; };
-		3637901BC5339A540A3F956E /* PhotoQualitySettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32ECE9E4DFB18879E40F98AE /* PhotoQualitySettingsTests.swift */; };
-		422ED03377B04425C1DFC7FF /* CaptureFlowIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E60E7AE691C4AF3AFDAEC43 /* CaptureFlowIntegrationTests.swift */; };
+		33B66294CDCF45EC4D97157D /* TestDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EF739F7BC379067BC24CB9 /* TestDefaults.swift */; };
+		3FCB63F98B87439B234F2333 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5B6A3E6CA82BA60696DEE1 /* SessionStore.swift */; };
 		501CE058C4F04FD4D11667DD /* TumbleAnimationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372169D1FB2AF2C617D9BAFD /* TumbleAnimationViewController.swift */; };
-		51DEB3520B657BF69B141E68 /* VideoRecordingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAC9A250AAE3633C08587900 /* VideoRecordingService.swift */; };
-		59C96E2516A963E6B766A713 /* CaptureViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D04E7EDFF16395C4B2B878 /* CaptureViewModelTests.swift */; };
+		588BBAF426840010102614C7 /* SessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7703583FDF6B52D3DD3BF145 /* SessionStoreTests.swift */; };
+		59939ECB7BA5C2D0F1407C19 /* LibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2198256E48F96174FC3C772F /* LibrarySaver.swift */; };
 		60E44C2D221371DB5687EAD0 /* CaptureScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6938C587B7D3350F551DE87F /* CaptureScreen.swift */; };
-		6A3FC9CD09D274DB926E5ADF /* CaptureViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EB50AFDF8047132C981A3 /* CaptureViewModel.swift */; };
-		6EC45A984B4B508780ADE7D9 /* MockStorageMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06870E4557CC101E3C7246D1 /* MockStorageMonitor.swift */; };
 		74AB22F16FD6DF7775D0FE63 /* TumbleAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07D01C68ADC7986D76FDF18F /* TumbleAnimationView.swift */; };
 		754BD821745FC6D917924A35 /* UIImage+Rotation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FE66E3C192F41D9824751E6 /* UIImage+Rotation.swift */; };
-		78A913F56EE1158BDED80126 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72BEA1A598F980214F469CAD /* AppState.swift */; };
-		848B1E39D80FF6E3AA8630EC /* VideoRecordingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BE27F0FF8EA9F4FA7D26467 /* VideoRecordingServiceTests.swift */; };
-		8774213476B7583BEBA4A35C /* PhotoQualitySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2224EA946A06AA0ADE13F822 /* PhotoQualitySettingsView.swift */; };
-		8B3AE429010747502DC757C7 /* CameraServiceProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11C33869B8D0B197D216AB62 /* CameraServiceProtocol.swift */; };
-		90F12EE0ACE61C9B8B3636DB /* VideoRecordingServiceProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96DE9769EC8308E194A347C4 /* VideoRecordingServiceProtocol.swift */; };
+		93B37D063BF136158AE4F803 /* CurationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16ECD2DB4C2CB4C64C9AD20 /* CurationPolicy.swift */; };
 		9A0457F6ACC2463ECDA7C150 /* TrueframeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D24D0B6CDE8D7034FB135A6 /* TrueframeApp.swift */; };
-		A368CCBF1FA825AE0D628DF6 /* CameraServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86137C638CE3978E931D8664 /* CameraServiceTests.swift */; };
-		B1800E4CDA000210A14EF85C /* PhotoCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A642FE2C10B4CC2782E0550 /* PhotoCache.swift */; };
+		9D24043D34428CA446EF0922 /* SessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A98485809891BEEBBB93F17 /* SessionCoordinator.swift */; };
+		BC38A293B472FC0BD3DEC736 /* CurationPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 736E0C47626F1423B573EC1B /* CurationPolicyTests.swift */; };
+		BC628E019D4B728B34526ABD /* CaptureConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E631B6D2C08F9571E5435EE2 /* CaptureConfiguration.swift */; };
 		BC8114FDE2DE9B40A44214CF /* HapticHeartbeatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02F74899A1AF7DA7E810C60 /* HapticHeartbeatService.swift */; };
 		C06EFB4148C55BE1B3516172 /* CaptureSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5344BBBE80F986A9F3D63E43 /* CaptureSettings.swift */; };
-		C26C3876B64357EC391C76DF /* MockVideoRecordingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB22D7A5CA5EB5958B339DEC /* MockVideoRecordingService.swift */; };
-		C4C8F7BF7C3E727A1A71FE1E /* MockAppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7136178BC25BC7604193B4CA /* MockAppState.swift */; };
 		C68F84FFC2BFEC55B03ED7AB /* UIImageExtensionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 286F2D7D1BF19F84423A105A /* UIImageExtensionTests.swift */; };
-		C6B16E833D237BA07479F4CE /* PhotoCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B59E38B7A61866B532CD2052 /* PhotoCacheTests.swift */; };
 		C8A5C339ED1BC22C276A1AA4 /* CameraSelectionSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6BD3D2C74662E0011CB0F5 /* CameraSelectionSettingsTests.swift */; };
-		D2880EC4F351DB45AE48EF76 /* LivePhotoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B50A75A5559DDCF8FAAE770E /* LivePhotoService.swift */; };
+		D04C96955C4B746ECE670154 /* SessionCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F2AB331548FEEECD2A816A /* SessionCoordinatorTests.swift */; };
 		DC36F64FA645BABB5AA7A988 /* FileManager+Safe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB10D931FC9F12980E468C6 /* FileManager+Safe.swift */; };
-		DE968641BCEA4771DFA31502 /* PhotoAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3539C25EAA694C1E6F3E15F5 /* PhotoAnalyzer.swift */; };
-		BG02MEDIAPROCESS0001A1B2 /* BackgroundMediaProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BG01MEDIAPROCESS0001A1B2 /* BackgroundMediaProcessor.swift */; };
-		E672C765E6F9AC757F0D629E /* MockHapticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1599AFCA5ED4BB84D58732 /* MockHapticService.swift */; };
 		EABA5493841228051E503A22 /* CameraSelectionSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAF5406BC81B3D659BA6B0BD /* CameraSelectionSettings.swift */; };
-		EADBA511951AF1C96B9A2994 /* StorageMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A339F845C6CFD1408BAE978 /* StorageMonitorTests.swift */; };
 		F5A5AB96F9ADCD1755091E53 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E6E1348F14D88D6AC5B1D0F3 /* Assets.xcassets */; };
-		F71FC04B5D6A340F5233B4AA /* AppStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53C108D6F9A8D110216FDF44 /* AppStateTests.swift */; };
-		F7E08003A9FC37CE8EE5EE1B /* CaptureMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64136A770028F29393A1AFAF /* CaptureMode.swift */; };
+		F7587F20238B39596C6F4940 /* FakeCaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495DBAFF257C67559AA64DB6 /* FakeCaptureEngine.swift */; };
+		FF838EFFE0F714485F006A4B /* ProximityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07B84C3F82081BC13B63269 /* ProximityMonitor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,68 +50,60 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		06870E4557CC101E3C7246D1 /* MockStorageMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockStorageMonitor.swift; sourceTree = "<group>"; };
 		07D01C68ADC7986D76FDF18F /* TumbleAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TumbleAnimationView.swift; sourceTree = "<group>"; };
-		11C33869B8D0B197D216AB62 /* CameraServiceProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraServiceProtocol.swift; sourceTree = "<group>"; };
+		1A5B6A3E6CA82BA60696DEE1 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		1FE66E3C192F41D9824751E6 /* UIImage+Rotation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIImage+Rotation.swift"; sourceTree = "<group>"; };
-		2224EA946A06AA0ADE13F822 /* PhotoQualitySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoQualitySettingsView.swift; sourceTree = "<group>"; };
+		2198256E48F96174FC3C772F /* LibrarySaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySaver.swift; sourceTree = "<group>"; };
 		286F2D7D1BF19F84423A105A /* UIImageExtensionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIImageExtensionTests.swift; sourceTree = "<group>"; };
-		2BE27F0FF8EA9F4FA7D26467 /* VideoRecordingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoRecordingServiceTests.swift; sourceTree = "<group>"; };
-		32ECE9E4DFB18879E40F98AE /* PhotoQualitySettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoQualitySettingsTests.swift; sourceTree = "<group>"; };
-		3539C25EAA694C1E6F3E15F5 /* PhotoAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAnalyzer.swift; sourceTree = "<group>"; };
-		BG01MEDIAPROCESS0001A1B2 /* BackgroundMediaProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundMediaProcessor.swift; sourceTree = "<group>"; };
+		2A98485809891BEEBBB93F17 /* SessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCoordinator.swift; sourceTree = "<group>"; };
+		36EF739F7BC379067BC24CB9 /* TestDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDefaults.swift; sourceTree = "<group>"; };
 		372169D1FB2AF2C617D9BAFD /* TumbleAnimationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TumbleAnimationViewController.swift; sourceTree = "<group>"; };
-		3A642FE2C10B4CC2782E0550 /* PhotoCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCache.swift; sourceTree = "<group>"; };
-		42D04E7EDFF16395C4B2B878 /* CaptureViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViewModelTests.swift; sourceTree = "<group>"; };
 		438F5F76D84F93DE366CF948 /* HapticHeartbeatServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticHeartbeatServiceTests.swift; sourceTree = "<group>"; };
 		45F88A0D2E5D6E0601CA4012 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
+		495DBAFF257C67559AA64DB6 /* FakeCaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeCaptureEngine.swift; sourceTree = "<group>"; };
 		4CB10D931FC9F12980E468C6 /* FileManager+Safe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FileManager+Safe.swift"; sourceTree = "<group>"; };
 		5344BBBE80F986A9F3D63E43 /* CaptureSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSettings.swift; sourceTree = "<group>"; };
-		53C108D6F9A8D110216FDF44 /* AppStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateTests.swift; sourceTree = "<group>"; };
 		5D24D0B6CDE8D7034FB135A6 /* TrueframeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrueframeApp.swift; sourceTree = "<group>"; };
-		5E60E7AE691C4AF3AFDAEC43 /* CaptureFlowIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureFlowIntegrationTests.swift; sourceTree = "<group>"; };
-		64136A770028F29393A1AFAF /* CaptureMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMode.swift; sourceTree = "<group>"; };
 		6938C587B7D3350F551DE87F /* CaptureScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureScreen.swift; sourceTree = "<group>"; };
-		7136178BC25BC7604193B4CA /* MockAppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAppState.swift; sourceTree = "<group>"; };
-		72BEA1A598F980214F469CAD /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
-		7ACA5A4126FFF3DC1FDCF66F /* PhotoQualitySettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoQualitySettings.swift; sourceTree = "<group>"; };
-		86137C638CE3978E931D8664 /* CameraServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraServiceTests.swift; sourceTree = "<group>"; };
-		88140D3C0242EF6FBF616C3B /* CameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraService.swift; sourceTree = "<group>"; };
-		8D8EB50AFDF8047132C981A3 /* CaptureViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViewModel.swift; sourceTree = "<group>"; };
+		736E0C47626F1423B573EC1B /* CurationPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurationPolicyTests.swift; sourceTree = "<group>"; };
+		7703583FDF6B52D3DD3BF145 /* SessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreTests.swift; sourceTree = "<group>"; };
 		967DED7DAEE7D665444FD5F4 /* CaptureSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSettingsTests.swift; sourceTree = "<group>"; };
-		96DE9769EC8308E194A347C4 /* VideoRecordingServiceProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoRecordingServiceProtocol.swift; sourceTree = "<group>"; };
-		9A339F845C6CFD1408BAE978 /* StorageMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageMonitorTests.swift; sourceTree = "<group>"; };
-		9D77852773449A1C87871F02 /* MockCameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockCameraService.swift; sourceTree = "<group>"; };
-		A0798505EC911E899D79119D /* VideoCaptureScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoCaptureScreen.swift; sourceTree = "<group>"; };
 		B02F74899A1AF7DA7E810C60 /* HapticHeartbeatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticHeartbeatService.swift; sourceTree = "<group>"; };
 		B0BF5C91BD80504906F30C71 /* CameraToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraToggleView.swift; sourceTree = "<group>"; };
-		B50A75A5559DDCF8FAAE770E /* LivePhotoService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePhotoService.swift; sourceTree = "<group>"; };
-		B59E38B7A61866B532CD2052 /* PhotoCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCacheTests.swift; sourceTree = "<group>"; };
-		BA1EB82B86A0F9A036C6FBAA /* StorageMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageMonitor.swift; sourceTree = "<group>"; };
-		CA1599AFCA5ED4BB84D58732 /* MockHapticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockHapticService.swift; sourceTree = "<group>"; };
-		CA834FE60595B27C0C6FAEE0 /* CapturedPhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturedPhoto.swift; sourceTree = "<group>"; };
+		C7F2AB331548FEEECD2A816A /* SessionCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCoordinatorTests.swift; sourceTree = "<group>"; };
+		D07B84C3F82081BC13B63269 /* ProximityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityMonitor.swift; sourceTree = "<group>"; };
+		D6860DD68D57474925CD8BBC /* CaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEngine.swift; sourceTree = "<group>"; };
+		E631B6D2C08F9571E5435EE2 /* CaptureConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureConfiguration.swift; sourceTree = "<group>"; };
 		E6E1348F14D88D6AC5B1D0F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		EAC9A250AAE3633C08587900 /* VideoRecordingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoRecordingService.swift; sourceTree = "<group>"; };
 		EAF5406BC81B3D659BA6B0BD /* CameraSelectionSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSelectionSettings.swift; sourceTree = "<group>"; };
 		EF6BD3D2C74662E0011CB0F5 /* CameraSelectionSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSelectionSettingsTests.swift; sourceTree = "<group>"; };
+		F16ECD2DB4C2CB4C64C9AD20 /* CurationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurationPolicy.swift; sourceTree = "<group>"; };
+		F2A7B923ADAF770503E76D35 /* PhotoScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoScorer.swift; sourceTree = "<group>"; };
 		F5FCCDDEDA5B70A6A5F51E6C /* Trueframe.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Trueframe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F60AF26150C4DCF521591373 /* Trueframe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Trueframe.entitlements; sourceTree = "<group>"; };
+		F9F2BD2E5F6B9659C948C27A /* SessionPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPhase.swift; sourceTree = "<group>"; };
 		FA8679EF8881A9A79F47F66A /* TrueframeTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TrueframeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		FB22D7A5CA5EB5958B339DEC /* MockVideoRecordingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockVideoRecordingService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0E96876ED3BF8466DA82CF0A /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				D6860DD68D57474925CD8BBC /* CaptureEngine.swift */,
+				D07B84C3F82081BC13B63269 /* ProximityMonitor.swift */,
+			);
+			path = Capture;
+			sourceTree = "<group>";
+		};
 		17814084E7FFEC4B3DC2949A /* Unit */ = {
 			isa = PBXGroup;
 			children = (
-				53C108D6F9A8D110216FDF44 /* AppStateTests.swift */,
 				EF6BD3D2C74662E0011CB0F5 /* CameraSelectionSettingsTests.swift */,
-				86137C638CE3978E931D8664 /* CameraServiceTests.swift */,
 				967DED7DAEE7D665444FD5F4 /* CaptureSettingsTests.swift */,
-				42D04E7EDFF16395C4B2B878 /* CaptureViewModelTests.swift */,
+				736E0C47626F1423B573EC1B /* CurationPolicyTests.swift */,
 				438F5F76D84F93DE366CF948 /* HapticHeartbeatServiceTests.swift */,
-				B59E38B7A61866B532CD2052 /* PhotoCacheTests.swift */,
-				32ECE9E4DFB18879E40F98AE /* PhotoQualitySettingsTests.swift */,
-				9A339F845C6CFD1408BAE978 /* StorageMonitorTests.swift */,
+				C7F2AB331548FEEECD2A816A /* SessionCoordinatorTests.swift */,
+				7703583FDF6B52D3DD3BF145 /* SessionStoreTests.swift */,
 				286F2D7D1BF19F84423A105A /* UIImageExtensionTests.swift */,
 			);
 			path = Unit;
@@ -136,12 +113,17 @@
 			isa = PBXGroup;
 			children = (
 				EAF5406BC81B3D659BA6B0BD /* CameraSelectionSettings.swift */,
-				CA834FE60595B27C0C6FAEE0 /* CapturedPhoto.swift */,
-				64136A770028F29393A1AFAF /* CaptureMode.swift */,
 				5344BBBE80F986A9F3D63E43 /* CaptureSettings.swift */,
-				7ACA5A4126FFF3DC1FDCF66F /* PhotoQualitySettings.swift */,
 			);
 			path = Models;
+			sourceTree = "<group>";
+		};
+		256A4E4B0AD609D67D52CE18 /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+				36EF739F7BC379067BC24CB9 /* TestDefaults.swift */,
+			);
+			path = Helpers;
 			sourceTree = "<group>";
 		};
 		26E54B557867382AF09B8AFC /* Extensions */ = {
@@ -153,14 +135,21 @@
 			path = Extensions;
 			sourceTree = "<group>";
 		};
+		51D0D37F2AFB3EE997F9CFF6 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				E631B6D2C08F9571E5435EE2 /* CaptureConfiguration.swift */,
+				F16ECD2DB4C2CB4C64C9AD20 /* CurationPolicy.swift */,
+				2A98485809891BEEBBB93F17 /* SessionCoordinator.swift */,
+				F9F2BD2E5F6B9659C948C27A /* SessionPhase.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
 		6B47A8CE86AC614859961004 /* Mocks */ = {
 			isa = PBXGroup;
 			children = (
-				7136178BC25BC7604193B4CA /* MockAppState.swift */,
-				9D77852773449A1C87871F02 /* MockCameraService.swift */,
-				CA1599AFCA5ED4BB84D58732 /* MockHapticService.swift */,
-				06870E4557CC101E3C7246D1 /* MockStorageMonitor.swift */,
-				FB22D7A5CA5EB5958B339DEC /* MockVideoRecordingService.swift */,
+				495DBAFF257C67559AA64DB6 /* FakeCaptureEngine.swift */,
 			);
 			path = Mocks;
 			sourceTree = "<group>";
@@ -168,18 +157,9 @@
 		73B05C18AAAADC53E74A1C86 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				72BEA1A598F980214F469CAD /* AppState.swift */,
 				5D24D0B6CDE8D7034FB135A6 /* TrueframeApp.swift */,
 			);
 			path = App;
-			sourceTree = "<group>";
-		};
-		74343574CFDE5716AE316046 /* Integration */ = {
-			isa = PBXGroup;
-			children = (
-				5E60E7AE691C4AF3AFDAEC43 /* CaptureFlowIntegrationTests.swift */,
-			);
-			path = Integration;
 			sourceTree = "<group>";
 		};
 		7565F73EC3DA4A5C8A4EC3DA = {
@@ -194,14 +174,7 @@
 		82D91EA2E08AA17EE75DECBF /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				BG01MEDIAPROCESS0001A1B2 /* BackgroundMediaProcessor.swift */,
-				88140D3C0242EF6FBF616C3B /* CameraService.swift */,
 				B02F74899A1AF7DA7E810C60 /* HapticHeartbeatService.swift */,
-				B50A75A5559DDCF8FAAE770E /* LivePhotoService.swift */,
-				3539C25EAA694C1E6F3E15F5 /* PhotoAnalyzer.swift */,
-				3A642FE2C10B4CC2782E0550 /* PhotoCache.swift */,
-				BA1EB82B86A0F9A036C6FBAA /* StorageMonitor.swift */,
-				EAC9A250AAE3633C08587900 /* VideoRecordingService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -211,29 +184,28 @@
 			children = (
 				B0BF5C91BD80504906F30C71 /* CameraToggleView.swift */,
 				6938C587B7D3350F551DE87F /* CaptureScreen.swift */,
-				8D8EB50AFDF8047132C981A3 /* CaptureViewModel.swift */,
 				45F88A0D2E5D6E0601CA4012 /* HomeScreen.swift */,
-				2224EA946A06AA0ADE13F822 /* PhotoQualitySettingsView.swift */,
 				07D01C68ADC7986D76FDF18F /* TumbleAnimationView.swift */,
 				372169D1FB2AF2C617D9BAFD /* TumbleAnimationViewController.swift */,
-				A0798505EC911E899D79119D /* VideoCaptureScreen.swift */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
 		};
-		AD8581E48CD84690FECFF5AA /* Protocols */ = {
+		97F41495F05D9EE9B4463490 /* Curation */ = {
 			isa = PBXGroup;
 			children = (
-				11C33869B8D0B197D216AB62 /* CameraServiceProtocol.swift */,
-				96DE9769EC8308E194A347C4 /* VideoRecordingServiceProtocol.swift */,
+				2198256E48F96174FC3C772F /* LibrarySaver.swift */,
+				F2A7B923ADAF770503E76D35 /* PhotoScorer.swift */,
+				1A5B6A3E6CA82BA60696DEE1 /* SessionStore.swift */,
 			);
-			path = Protocols;
+			path = Curation;
 			sourceTree = "<group>";
 		};
 		CA695DC1D3BEB0BACBD02F38 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
 				E6E1348F14D88D6AC5B1D0F3 /* Assets.xcassets */,
+				F60AF26150C4DCF521591373 /* Trueframe.entitlements */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -242,6 +214,9 @@
 			isa = PBXGroup;
 			children = (
 				73B05C18AAAADC53E74A1C86 /* App */,
+				0E96876ED3BF8466DA82CF0A /* Capture */,
+				97F41495F05D9EE9B4463490 /* Curation */,
+				51D0D37F2AFB3EE997F9CFF6 /* Domain */,
 				26E54B557867382AF09B8AFC /* Extensions */,
 				1C9D6AC99CF4F3190D5E7773 /* Models */,
 				CA695DC1D3BEB0BACBD02F38 /* Resources */,
@@ -254,10 +229,8 @@
 		E641099A257AA4471AC31781 /* TrueframeTests */ = {
 			isa = PBXGroup;
 			children = (
-				2BE27F0FF8EA9F4FA7D26467 /* VideoRecordingServiceTests.swift */,
-				74343574CFDE5716AE316046 /* Integration */,
+				256A4E4B0AD609D67D52CE18 /* Helpers */,
 				6B47A8CE86AC614859961004 /* Mocks */,
-				AD8581E48CD84690FECFF5AA /* Protocols */,
 				17814084E7FFEC4B3DC2949A /* Unit */,
 			);
 			path = TrueframeTests;
@@ -318,7 +291,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					37967493EAC8FBE5594B7519 = {
 						DevelopmentTeam = CL6XWJCS9R;
@@ -331,7 +304,6 @@
 				};
 			};
 			buildConfigurationList = DEB177E90C094C668C67F510 /* Build configuration list for PBXProject "Trueframe" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -341,6 +313,7 @@
 			mainGroup = 7565F73EC3DA4A5C8A4EC3DA;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+			productRefGroup = FBAFC6814C22E17457F13A28 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -366,25 +339,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F71FC04B5D6A340F5233B4AA /* AppStateTests.swift in Sources */,
 				C8A5C339ED1BC22C276A1AA4 /* CameraSelectionSettingsTests.swift in Sources */,
-				8B3AE429010747502DC757C7 /* CameraServiceProtocol.swift in Sources */,
-				A368CCBF1FA825AE0D628DF6 /* CameraServiceTests.swift in Sources */,
-				422ED03377B04425C1DFC7FF /* CaptureFlowIntegrationTests.swift in Sources */,
 				01C74947F64F5402D7B2A5D3 /* CaptureSettingsTests.swift in Sources */,
-				59C96E2516A963E6B766A713 /* CaptureViewModelTests.swift in Sources */,
+				BC38A293B472FC0BD3DEC736 /* CurationPolicyTests.swift in Sources */,
+				F7587F20238B39596C6F4940 /* FakeCaptureEngine.swift in Sources */,
 				2B71E5D25B6F941CDD419D6F /* HapticHeartbeatServiceTests.swift in Sources */,
-				C4C8F7BF7C3E727A1A71FE1E /* MockAppState.swift in Sources */,
-				187E07420436EDDF7506962B /* MockCameraService.swift in Sources */,
-				E672C765E6F9AC757F0D629E /* MockHapticService.swift in Sources */,
-				6EC45A984B4B508780ADE7D9 /* MockStorageMonitor.swift in Sources */,
-				C26C3876B64357EC391C76DF /* MockVideoRecordingService.swift in Sources */,
-				C6B16E833D237BA07479F4CE /* PhotoCacheTests.swift in Sources */,
-				3637901BC5339A540A3F956E /* PhotoQualitySettingsTests.swift in Sources */,
-				EADBA511951AF1C96B9A2994 /* StorageMonitorTests.swift in Sources */,
+				D04C96955C4B746ECE670154 /* SessionCoordinatorTests.swift in Sources */,
+				588BBAF426840010102614C7 /* SessionStoreTests.swift in Sources */,
+				33B66294CDCF45EC4D97157D /* TestDefaults.swift in Sources */,
 				C68F84FFC2BFEC55B03ED7AB /* UIImageExtensionTests.swift in Sources */,
-				90F12EE0ACE61C9B8B3636DB /* VideoRecordingServiceProtocol.swift in Sources */,
-				848B1E39D80FF6E3AA8630EC /* VideoRecordingServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -392,31 +355,26 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				78A913F56EE1158BDED80126 /* AppState.swift in Sources */,
 				EABA5493841228051E503A22 /* CameraSelectionSettings.swift in Sources */,
-				2965422D5E252F85BC6DA264 /* CameraService.swift in Sources */,
 				017398BD9210842B9E055B7C /* CameraToggleView.swift in Sources */,
-				F7E08003A9FC37CE8EE5EE1B /* CaptureMode.swift in Sources */,
+				BC628E019D4B728B34526ABD /* CaptureConfiguration.swift in Sources */,
+				001EF5D53BCF2C83D3501958 /* CaptureEngine.swift in Sources */,
 				60E44C2D221371DB5687EAD0 /* CaptureScreen.swift in Sources */,
 				C06EFB4148C55BE1B3516172 /* CaptureSettings.swift in Sources */,
-				6A3FC9CD09D274DB926E5ADF /* CaptureViewModel.swift in Sources */,
-				16EE5D66EE568ADE18E6F436 /* CapturedPhoto.swift in Sources */,
+				93B37D063BF136158AE4F803 /* CurationPolicy.swift in Sources */,
 				DC36F64FA645BABB5AA7A988 /* FileManager+Safe.swift in Sources */,
 				BC8114FDE2DE9B40A44214CF /* HapticHeartbeatService.swift in Sources */,
 				25CD047AC6F0CE97891DBE6A /* HomeScreen.swift in Sources */,
-				D2880EC4F351DB45AE48EF76 /* LivePhotoService.swift in Sources */,
-				DE968641BCEA4771DFA31502 /* PhotoAnalyzer.swift in Sources */,
-				BG02MEDIAPROCESS0001A1B2 /* BackgroundMediaProcessor.swift in Sources */,
-				B1800E4CDA000210A14EF85C /* PhotoCache.swift in Sources */,
-				2977B7EBEE376D41A1D2171A /* PhotoQualitySettings.swift in Sources */,
-				8774213476B7583BEBA4A35C /* PhotoQualitySettingsView.swift in Sources */,
-				1129FDE2C4173F557D69AE8B /* StorageMonitor.swift in Sources */,
+				59939ECB7BA5C2D0F1407C19 /* LibrarySaver.swift in Sources */,
+				1894BE47C309285EBC4EED2E /* PhotoScorer.swift in Sources */,
+				FF838EFFE0F714485F006A4B /* ProximityMonitor.swift in Sources */,
+				9D24043D34428CA446EF0922 /* SessionCoordinator.swift in Sources */,
+				147C1BE8E83C057819AA76F4 /* SessionPhase.swift in Sources */,
+				3FCB63F98B87439B234F2333 /* SessionStore.swift in Sources */,
 				9A0457F6ACC2463ECDA7C150 /* TrueframeApp.swift in Sources */,
 				74AB22F16FD6DF7775D0FE63 /* TumbleAnimationView.swift in Sources */,
 				501CE058C4F04FD4D11667DD /* TumbleAnimationViewController.swift in Sources */,
 				754BD821745FC6D917924A35 /* UIImage+Rotation.swift in Sources */,
-				1D4D7CD3E496028EF0D7881D /* VideoCaptureScreen.swift in Sources */,
-				51DEB3520B657BF69B141E68 /* VideoRecordingService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -435,7 +393,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Trueframe/Resources/Trueframe.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Trueframe/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -499,13 +456,12 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Trueframe captures photos when you cover the proximity sensor";
-				INFOPLIST_KEY_NSMotionUsageDescription = "Motion data helps select the right camera and adjust capture timing";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Photos are saved to your Camera Roll";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -513,7 +469,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -556,7 +512,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Trueframe/Resources/Trueframe.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Trueframe/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -626,13 +581,12 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Trueframe captures photos when you cover the proximity sensor";
-				INFOPLIST_KEY_NSMotionUsageDescription = "Motion data helps select the right camera and adjust capture timing";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Photos are saved to your Camera Roll";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -641,7 +595,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;

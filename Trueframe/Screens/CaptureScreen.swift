@@ -1,21 +1,14 @@
-// Active capture session screen.
+// Active capture session screen: intentionally black and empty.
+// The session lifecycle is driven by SessionCoordinator, not this view.
 
 import SwiftUI
 
 struct CaptureScreen: View {
-    @Environment(AppState.self) private var appState
-    @StateObject private var viewModel = CaptureViewModel()
-
     var body: some View {
         Color.black.ignoresSafeArea()
-            .statusBarHidden(true)
-            .persistentSystemOverlays(.hidden)
-            .onAppear { viewModel.onAppear(appState: appState) }
-            .onDisappear { viewModel.onDisappear() }
     }
 }
 
 #Preview {
     CaptureScreen()
-        .environment(AppState())
 }

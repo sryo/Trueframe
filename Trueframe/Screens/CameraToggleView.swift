@@ -13,15 +13,14 @@ private func triggerHaptic() {
 
 // MARK: - Cached Device Discovery
 
-/// Caches the telephoto camera discovery session to avoid expensive recreation on every render.
+/// Computes the telephoto zoom label once; discovery is expensive per render.
 private enum TelephotoDiscovery {
-    static let session = AVCaptureDevice.DiscoverySession(
-        deviceTypes: [.builtInTelephotoCamera, .builtInWideAngleCamera],
-        mediaType: .video,
-        position: .back
-    )
-
     static let label: String = {
+        let session = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInTelephotoCamera, .builtInWideAngleCamera],
+            mediaType: .video,
+            position: .back
+        )
         let devices = session.devices
         let telephoto = devices.first(where: { $0.deviceType == .builtInTelephotoCamera })
         let wide = devices.first(where: { $0.deviceType == .builtInWideAngleCamera })
@@ -82,8 +81,7 @@ struct CameraToggleView: View {
                 }
 
                 CameraLensButton(
-                    isEnabled: settings.ultrawideEnabled,
-                    isSmudged: settings.isSmudged(.ultrawide),
+                    isEnabled: settings.selectedCamera == .ultrawide,
                     label: "0.5",
                     accessibilityLabel: "Ultrawide camera",
                     size: circleSize
@@ -95,8 +93,7 @@ struct CameraToggleView: View {
             // Right column: Telephoto (top) and Wide (bottom), vertically stacked
             VStack(spacing: verticalSpacing) {
                 CameraLensButton(
-                    isEnabled: settings.telephotoEnabled,
-                    isSmudged: settings.isSmudged(.telephoto),
+                    isEnabled: settings.selectedCamera == .telephoto,
                     label: TelephotoDiscovery.label,
                     accessibilityLabel: "Telephoto camera",
                     size: circleSize
@@ -105,8 +102,7 @@ struct CameraToggleView: View {
                 }
 
                 CameraLensButton(
-                    isEnabled: settings.wideEnabled,
-                    isSmudged: settings.isSmudged(.wide),
+                    isEnabled: settings.selectedCamera == .wide,
                     label: "1x",
                     accessibilityLabel: "Wide camera",
                     size: circleSize
@@ -127,7 +123,6 @@ struct CameraToggleView: View {
 
 private struct CameraLensButton: View {
     let isEnabled: Bool
-    let isSmudged: Bool
     let label: String
     let accessibilityLabel: String
     let size: CGFloat
@@ -138,7 +133,6 @@ private struct CameraLensButton: View {
     // Visual constants
     private let enabledRingColor = Color.white
     private let disabledRingColor = Color.white.opacity(0.20)
-    private let smudgeColor = Color.orange
     private let enabledFillColor = Color.white.opacity(0.15)
     private let disabledFillColor = Color.white.opacity(0.08)
     private let ringWidth: CGFloat = 1.5
@@ -155,7 +149,7 @@ private struct CameraLensButton: View {
                     .overlay(
                         Circle()
                             .strokeBorder(
-                                isSmudged ? smudgeColor : (isEnabled ? enabledRingColor : disabledRingColor),
+                                isEnabled ? enabledRingColor : disabledRingColor,
                                 lineWidth: ringWidth
                             )
                     )
@@ -185,14 +179,6 @@ private struct CameraLensButton: View {
                 Text(label)
                     .font(.system(size: 10, weight: .medium, design: .default))
                     .foregroundStyle(isEnabled ? Color.white.opacity(0.9) : Color.white.opacity(0.20))
-
-                // Smudge dot indicator
-                if isSmudged {
-                    Circle()
-                        .fill(smudgeColor)
-                        .frame(width: 6, height: 6)
-                        .offset(x: size * 0.32, y: -size * 0.32)
-                }
             }
             .frame(width: size, height: size)
             .scaleEffect(isPressed ? 0.9 : 1.0)
@@ -202,14 +188,8 @@ private struct CameraLensButton: View {
         }
         .buttonStyle(LensPressStyle(isPressed: $isPressed))
         .accessibilityLabel(accessibilityLabel)
-        .accessibilityValue(accessibilityStateValue)
+        .accessibilityValue(isEnabled ? "Enabled" : "Disabled")
         .accessibilityHint("Double tap to toggle")
-    }
-
-    private var accessibilityStateValue: String {
-        var state = isEnabled ? "Enabled" : "Disabled"
-        if isSmudged { state += ", Lens smudged" }
-        return state
     }
 }
 
@@ -288,13 +268,6 @@ private struct LensPressStyle: ButtonStyle {
             CameraToggleView(settings: {
                 let s = CameraSelectionSettings()
                 s.select(.telephoto)
-                return s
-            }())
-
-            // Preview with smudged lens
-            CameraToggleView(settings: {
-                let s = CameraSelectionSettings()
-                s.setSmudged(.wide, isSmudged: true)
                 return s
             }())
         }

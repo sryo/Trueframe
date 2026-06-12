@@ -3,9 +3,8 @@
 import SwiftUI
 
 struct HomeScreen: View {
-    @Environment(AppState.self) private var appState
+    @Environment(SessionCoordinator.self) private var coordinator
     @State private var isVisible = false
-    @State private var showingQualitySettings = false
 
     // MARK: - Visibility Animation Helpers
 
@@ -54,12 +53,10 @@ struct HomeScreen: View {
 
                     // Camera selection and interval
                     VStack(spacing: 12) {
-                        CameraToggleView(settings: appState.cameraSelectionSettings)
+                        CameraToggleView(settings: coordinator.cameraSelectionSettings)
 
                         // Capture interval picker (0.25s = burst-like speed)
-                        if appState.captureMode == .photo {
-                            CaptureIntervalPicker(settings: appState.captureSettings)
-                        }
+                        CaptureIntervalPicker(settings: coordinator.captureSettings)
                     }
                     .opacity(isVisible ? 0.7 : 0)
                     .blur(radius: isVisible ? 0 : 6)
@@ -68,52 +65,22 @@ struct HomeScreen: View {
                 .padding(.top, 60)
                 .padding(.horizontal, 20)
                 Spacer()
-
-                // Capture mode selector (centered) with quality button (right)
-                ZStack {
-                    CaptureModeSelector(appState: appState)
-
-                    HStack {
-                        Spacer()
-                        // Quality settings button
-                        Button {
-                            showingQualitySettings = true
-                        } label: {
-                            Image(systemName: "slider.horizontal.3")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.6))
-                                .frame(width: 40, height: 40)
-                                .background(
-                                    Circle()
-                                        .fill(Color.white.opacity(0.08))
-                                )
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .opacity(isVisible ? 0.8 : 0)
-                .blur(radius: isVisible ? 0 : 6)
-                .animation(.easeOut(duration: 0.6).delay(0.5), value: isVisible)
-                .padding(.bottom, 40)
             }
-        }
-        .sheet(isPresented: $showingQualitySettings) {
-            PhotoQualitySettingsView(settings: appState.photoQualitySettings)
         }
         .accessibilityLabel("Trueframe home")
         .accessibilityHint("Hold phone to your heart to start capturing photos")
-        .onChange(of: appState.isCapturing) { _, isCapturing in
+        .onChange(of: coordinator.isCapturing) { _, isCapturing in
             if isCapturing { hideContent() }
         }
-        .onChange(of: appState.showingTumbleAnimation) { _, showing in
+        .onChange(of: coordinator.showingTumbleAnimation) { _, showing in
             if showing {
                 hideContent()
-            } else if !appState.isCapturing {
+            } else if !coordinator.isCapturing {
                 showContent(delay: 0.3)
             }
         }
         .onAppear {
-            if !appState.isCapturing { showContent() }
+            if !coordinator.isCapturing { showContent() }
         }
     }
 }
@@ -127,59 +94,6 @@ private struct HeartbeatSymbol: View {
         } animation: { phase in
             phase ? .easeIn(duration: 0.05) : .easeOut(duration: 0.85)
         }
-    }
-}
-
-struct CaptureModeSelector: View {
-    @Bindable var appState: AppState
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(CaptureMode.allCases) { mode in
-                CaptureModeButton(
-                    mode: mode,
-                    isSelected: appState.captureMode == mode
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        appState.captureMode = mode
-                    }
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                }
-            }
-        }
-        .padding(4)
-        .background(
-            Capsule()
-                .fill(Color.white.opacity(0.08))
-        )
-    }
-}
-
-private struct CaptureModeButton: View {
-    let mode: CaptureMode
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: mode.icon)
-                    .font(.system(size: 12, weight: .medium))
-
-                if isSelected {
-                    Text(mode.displayName)
-                        .font(.system(size: 12, weight: .semibold))
-                }
-            }
-            .foregroundStyle(isSelected ? .black : .white.opacity(0.6))
-            .padding(.horizontal, isSelected ? 16 : 12)
-            .padding(.vertical, 10)
-            .background(
-                Capsule()
-                    .fill(isSelected ? mode.accentColor : Color.clear)
-            )
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -267,5 +181,5 @@ private struct IntervalItem: View {
 
 #Preview {
     HomeScreen()
-        .environment(AppState())
+        .environment(SessionCoordinator())
 }
