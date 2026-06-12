@@ -25,6 +25,7 @@
 		93B37D063BF136158AE4F803 /* CurationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16ECD2DB4C2CB4C64C9AD20 /* CurationPolicy.swift */; };
 		9A0457F6ACC2463ECDA7C150 /* TrueframeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D24D0B6CDE8D7034FB135A6 /* TrueframeApp.swift */; };
 		9D24043D34428CA446EF0922 /* SessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A98485809891BEEBBB93F17 /* SessionCoordinator.swift */; };
+		A5BF99229DC03CA99403EA4B /* CaptureSessionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A6C69B1A8DC64557468C4F8 /* CaptureSessionIntent.swift */; };
 		BC38A293B472FC0BD3DEC736 /* CurationPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 736E0C47626F1423B573EC1B /* CurationPolicyTests.swift */; };
 		BC628E019D4B728B34526ABD /* CaptureConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E631B6D2C08F9571E5435EE2 /* CaptureConfiguration.swift */; };
 		BC8114FDE2DE9B40A44214CF /* HapticHeartbeatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02F74899A1AF7DA7E810C60 /* HapticHeartbeatService.swift */; };
@@ -51,6 +52,7 @@
 
 /* Begin PBXFileReference section */
 		07D01C68ADC7986D76FDF18F /* TumbleAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TumbleAnimationView.swift; sourceTree = "<group>"; };
+		0A6C69B1A8DC64557468C4F8 /* CaptureSessionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSessionIntent.swift; sourceTree = "<group>"; };
 		1A5B6A3E6CA82BA60696DEE1 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		1FE66E3C192F41D9824751E6 /* UIImage+Rotation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIImage+Rotation.swift"; sourceTree = "<group>"; };
 		2198256E48F96174FC3C772F /* LibrarySaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySaver.swift; sourceTree = "<group>"; };
@@ -157,6 +159,7 @@
 		73B05C18AAAADC53E74A1C86 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				0A6C69B1A8DC64557468C4F8 /* CaptureSessionIntent.swift */,
 				5D24D0B6CDE8D7034FB135A6 /* TrueframeApp.swift */,
 			);
 			path = App;
@@ -360,6 +363,7 @@
 				BC628E019D4B728B34526ABD /* CaptureConfiguration.swift in Sources */,
 				001EF5D53BCF2C83D3501958 /* CaptureEngine.swift in Sources */,
 				60E44C2D221371DB5687EAD0 /* CaptureScreen.swift in Sources */,
+				A5BF99229DC03CA99403EA4B /* CaptureSessionIntent.swift in Sources */,
 				C06EFB4148C55BE1B3516172 /* CaptureSettings.swift in Sources */,
 				93B37D063BF136158AE4F803 /* CurationPolicy.swift in Sources */,
 				DC36F64FA645BABB5AA7A988 /* FileManager+Safe.swift in Sources */,

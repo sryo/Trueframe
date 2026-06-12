@@ -50,6 +50,7 @@ actor CaptureEngine: CaptureEngineProtocol {
     private let photoOutput = AVCapturePhotoOutput()
     private var currentInput: AVCaptureDeviceInput?
     private var configuredLens: BackCameraType?
+    private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
 
     private var isRunning = false
     private var cadenceTask: Task<Void, Never>?
@@ -132,8 +133,9 @@ actor CaptureEngine: CaptureEngineProtocol {
 
         if let connection = photoOutput.connection(with: .video),
            connection.isVideoRotationAngleSupported(90) {
-            connection.videoRotationAngle = 90  // portrait
+            connection.videoRotationAngle = 90  // portrait default; refined per shot
         }
+        rotationCoordinator = AVCaptureDevice.RotationCoordinator(device: camera, previewLayer: nil)
 
         if camera.isFocusModeSupported(.continuousAutoFocus) {
             try? camera.lockForConfiguration()
@@ -194,6 +196,16 @@ actor CaptureEngine: CaptureEngineProtocol {
     }
 
     private func captureOne(_ configuration: CaptureConfiguration) {
+        // Gravity-correct orientation per shot: chest-holds happen at any
+        // angle and the user never sees a viewfinder to compensate
+        if let rotationCoordinator,
+           let connection = photoOutput.connection(with: .video) {
+            let angle = rotationCoordinator.videoRotationAngleForHorizonLevelCapture
+            if connection.isVideoRotationAngleSupported(angle) {
+                connection.videoRotationAngle = angle
+            }
+        }
+
         let settings = makePhotoSettings(configuration)
         let delegate = PhotoCaptureDelegate(engine: self, captureID: settings.uniqueID)
         inFlightDelegates[settings.uniqueID] = delegate

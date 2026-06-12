@@ -70,6 +70,9 @@ final class SessionCoordinator {
         eventTask = Task {
             await store.clearSession()
             await haptics.prepareForSession()
+            // One beat at the moment of contact, before the first photo:
+            // the answer to "is it working?" on a screen the user can't see
+            haptics.playHeartbeat()
             let events = await engine.start(configuration)
             for await event in events {
                 await handle(event)
