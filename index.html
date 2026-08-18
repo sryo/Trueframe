@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>trueframe - Hold Your Phone to Your Heart to Capture Life</title>
+  <meta name="description" content="No viewfinder, no shutter. Press the phone to your chest and a burst begins. The best photos are already in your library.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f5f5f5;
+      --text-primary: #222;
+      --text-secondary: #666;
+      --accent: #e8395a;
+      --border: #e0e0e0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1e1e1e;
+        --bg-secondary: #2a2a2a;
+        --text-primary: #f0f0f0;
+        --text-secondary: #a0a0a0;
+        --accent: #ff375f;
+        --border: #3a3a3a;
+      }
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* Hero */
+    .hero { padding: 140px 2rem 40px; text-align: center; }
+    .hero h1 {
+      font-size: 3.5rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      animation: fadeInUp 0.8s ease;
+    }
+    .hero h2 {
+      font-size: 1.35rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+      line-height: 1.7;
+    }
+    .hero__cta a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+    .hero__cta a:hover { text-decoration: underline; }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Demo: the app's own screens, driven by press-and-hold. */
+    .stage { display: flex; justify-content: center; margin: 3rem 0 0.9rem; }
+
+    .phone {
+      position: relative;
+      width: 300px;
+      height: 540px;
+      border-radius: 38px;
+      background: #000;
+      border: 6px solid #131316;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.32);
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      cursor: pointer;
+    }
+
+    /* HomeScreen.swift: 56pt semibold, white at 20%, bottom left. */
+    .home {
+      position: absolute;
+      inset: 0;
+      padding: 0 20px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-start;
+      transition: opacity 0.8s ease-out, filter 0.8s ease-out;
+    }
+    .home.is-hidden { opacity: 0; filter: blur(8px); transition-duration: 0.15s; }
+    .home__line {
+      font-size: 28px;
+      font-weight: 600;
+      line-height: 1.02;
+      letter-spacing: -0.02em;
+      color: rgba(255, 255, 255, 0.20);
+    }
+    .home__mark {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      margin-top: 16px;
+      font-size: 11px;
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.20);
+    }
+    .heart { font-size: 7px; line-height: 1; }
+
+    .controls {
+      position: absolute;
+      top: 43px;
+      right: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 12px;
+      opacity: 0.7;
+      transition: opacity 0.4s ease;
+    }
+    .controls.is-hidden { opacity: 0; }
+
+    /* Flash over ultrawide on the left, telephoto over wide on the right,
+       12pt of padding on a 20pt continuous rounded rect at white 3%. */
+    .lenses { display: flex; align-items: flex-start; gap: 2px; padding: 8px; border-radius: 14px; background: rgba(255, 255, 255, 0.03); }
+    .lenses__col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+    .lens {
+      position: relative;
+      width: 37px;
+      height: 37px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.20);
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transform: scale(0.95);
+      transition: transform 0.2s ease-out, background 0.2s ease-out, border-color 0.2s ease-out;
+    }
+    .lens.is-on {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: #fff;
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.08);
+      transform: scale(1);
+    }
+    .lens:active { transform: scale(0.9); }
+    /* The darker glass in the middle of the lens: 55% of the circle. */
+    .lens::before {
+      content: '';
+      position: absolute;
+      inset: 22.5%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.3));
+    }
+    .lens span {
+      position: relative;
+      font-size: 8px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.20);
+    }
+    .lens.is-on span { color: rgba(255, 255, 255, 0.9); }
+
+    .flash {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.20);
+      background: rgba(255, 255, 255, 0.03);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.20);
+      cursor: pointer;
+      padding: 0;
+    }
+    .flash.is-on {
+      border-color: #ffd60a;
+      background: rgba(255, 214, 10, 0.2);
+      color: #ffd60a;
+      box-shadow: 0 0 4px rgba(255, 214, 10, 0.3);
+    }
+    .flash svg { width: 7px; height: 7px; }
+
+    .intervals {
+      display: flex;
+      gap: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 3px 6px;
+    }
+    .intervals button {
+      font: inherit;
+      font-size: 8px;
+      color: rgba(255, 255, 255, 0.3);
+      background: none;
+      border: none;
+      border-radius: 999px;
+      width: 27px;
+      height: 17px;
+      cursor: pointer;
+    }
+    .intervals button.is-on {
+      color: #fff;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* CaptureScreen.swift is black and empty; the only feedback is haptic. This
+       ring stands in for the beat you would feel. */
+    .beat {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 44px;
+      height: 44px;
+      margin: -22px 0 0 -22px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .beat.is-beating { animation: beat 0.75s ease-out; }
+    @keyframes beat {
+      0% { transform: scale(0.5); opacity: 0.65; }
+      100% { transform: scale(1.9); opacity: 0; }
+    }
+
+    .frame {
+      position: absolute;
+      border-radius: 8px;
+      border: 2px solid #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+    }
+
+    .sheet {
+      position: absolute;
+      inset: 0;
+      padding: 20px 16px;
+      display: none;
+      flex-direction: column;
+      background: #000;
+    }
+    .sheet.is-on { display: flex; }
+    .sheet__head { font-size: 12px; color: rgba(255, 255, 255, 0.45); margin-bottom: 12px; }
+    .sheet__head b { color: #fff; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+    .thumb {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 4px;
+      overflow: hidden;
+      transition: opacity 0.5s ease, filter 0.5s ease;
+    }
+    .thumb span {
+      position: absolute;
+      left: 2px;
+      bottom: 1px;
+      font-size: 7px;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    }
+    .thumb.is-dropped { opacity: 0.18; filter: grayscale(1); }
+    .sheet__foot { margin-top: auto; font-size: 10px; color: rgba(255, 255, 255, 0.35); }
+
+    .hint { font-size: 0.85rem; color: var(--text-secondary); margin: 0.9rem auto 2rem; text-align: center; max-width: 460px; }
+
+    section { padding: 20px 0; }
+    h2.section { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+    section p { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.8rem; }
+    section a { color: var(--accent); text-decoration: none; }
+    section a:hover { text-decoration: underline; }
+
+    pre {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+    code {
+      background: var(--bg-secondary);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    }
+
+    /* FAQ */
+    .faq-section { max-width: 640px; margin: 0 auto; padding: 40px 24px 60px; }
+    .faq-section h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; }
+
+    details { background: var(--bg-primary); border-bottom: 1px solid var(--border); }
+    details:first-of-type { border-top: 1px solid var(--border); }
+    summary {
+      padding: 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: '+';
+      font-size: 1.25rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+    details[open] summary::after { content: '−'; }
+    details p {
+      padding: 0 16px 16px;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 0;
+    }
+    details a { color: var(--accent); text-decoration: none; }
+    details a:hover { text-decoration: underline; }
+
+    /* Footer */
+    .footer { padding: 40px 2rem; text-align: center; }
+    .footer__bottom {
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    @media (max-width: 600px) {
+      .hero { padding: 80px 1.5rem 30px; }
+      .hero h1 { font-size: 2.5rem; }
+      .hero h2 { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <section class="hero">
+    <h1>trueframe</h1>
+    <h2>Hold your phone to your heart to capture life</h2>
+    <p class="hero__cta"><a href="https://github.com/sryo/Trueframe">View on GitHub</a></p>
+  </section>
+
+  <div class="container">
+    <div class="stage">
+      <div class="phone" id="phone">
+        <div class="home" id="home">
+          <div class="home__line">hold to your heart<br>to capture life</div>
+          <div class="home__mark">
+            <span>trueframe</span>
+            <span class="heart" id="heart">♥</span>
+          </div>
+        </div>
+
+        <div class="controls" id="controls">
+          <div class="lenses" id="lenses">
+            <div class="lenses__col">
+              <button class="flash" id="flash" aria-label="Flash">
+                <svg viewBox="0 0 8 12"><path d="M5 0 0 7h3l-1 5 5-7H4z" fill="currentColor"/></svg>
+              </button>
+              <button class="lens" data-lens="ultrawide"><span>0.5</span></button>
+            </div>
+            <div class="lenses__col">
+              <button class="lens" data-lens="telephoto"><span>2x</span></button>
+              <button class="lens is-on" data-lens="wide"><span>1x</span></button>
+            </div>
+          </div>
+          <div class="intervals" id="intervals">
+            <button data-interval="0.25">0.25s</button>
+            <button data-interval="0.5">0.5s</button>
+            <button data-interval="1" class="is-on">1s</button>
+            <button data-interval="2">2s</button>
+            <button data-interval="5">5s</button>
+          </div>
+        </div>
+
+        <div class="beat" id="beat"></div>
+
+        <div class="sheet" id="sheet">
+          <div class="sheet__head" id="sheetHead"></div>
+          <div class="grid" id="grid"></div>
+          <div class="sheet__foot">Tap to start over.</div>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint">
+      Press and hold the phone. That press is your chest covering the proximity sensor, and
+      it is the only thing that starts a session. Let go when the moment has passed.
+    </p>
+  </div>
+
+  <section class="faq-section">
+    <h2>FAQ</h2>
+
+    <details>
+      <summary>Why is there no shutter button?</summary>
+      <p>
+        Because pressing it means looking at a screen instead of at what's in front of you.
+        The gesture is the whole interface: phone against your chest, session starts. Lift it
+        away, session ends.
+      </p>
+    </details>
+
+    <details>
+      <summary>What am I looking at while it shoots?</summary>
+      <p>
+        Nothing. The screen is black and empty on purpose, facing your shirt. What you get is a
+        heartbeat: one beat the instant you make contact, then one for every photo taken.
+      </p>
+    </details>
+
+    <details>
+      <summary>What if I pocket the phone by accident?</summary>
+      <p>
+        Three pitch-black frames in a row and the session ends itself. Same when storage runs
+        low.
+      </p>
+    </details>
+
+    <details>
+      <summary>Where do the photos go?</summary>
+      <p>
+        Straight into your photo library at the end of the session. Nothing is uploaded, and
+        there is no gallery inside the app to go back through.
+      </p>
+    </details>
+
+    <details>
+      <summary>Can I start it without unlocking and hunting for the icon?</summary>
+      <p>
+        There's a Capture intent for the Action Button, Shortcuts, and Siri. It opens the app
+        ready to go. Proximity is still what actually begins the session.
+      </p>
+    </details>
+
+    <details>
+      <summary>Is it free?</summary>
+      <p>Yes, open source and free to use.</p>
+    </details>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__bottom">© 2026 sryo</div>
+    </div>
+  </footer>
+
+  <script>
+    const phone = document.getElementById('phone');
+    const home = document.getElementById('home');
+    const controls = document.getElementById('controls');
+    const beat = document.getElementById('beat');
+    const sheet = document.getElementById('sheet');
+    const sheetHead = document.getElementById('sheetHead');
+    const grid = document.getElementById('grid');
+    const heart = document.getElementById('heart');
+
+    // CurationPolicy.swift
+    const MAX_PHOTOS = 50;
+    const QUALITY_THRESHOLD = 0.4;
+
+    let interval = 1.0;
+    let phase = 'idle';
+    let captured = [];
+    let captureTimer = null;
+
+    // Date+Moon.swift: lunar age from arithmetic alone, and the heart in the
+    // wordmark is brighter within half a day of the full moon.
+    const SYNODIC = 29.53059;
+    const REFERENCE_NEW_MOON = 947182440;
+    function lunarAgeDays() {
+      const days = (Date.now() / 1000 - REFERENCE_NEW_MOON) / 86400;
+      const age = days % SYNODIC;
+      return age < 0 ? age + SYNODIC : age;
+    }
+    const nearFullMoon = Math.abs(lunarAgeDays() - SYNODIC / 2) < 0.5;
+    const [DIM, BRIGHT] = nearFullMoon ? [0.5, 0.9] : [0.30, 0.6];
+
+    // A resting heart, 52 beats a minute, that once in a long while skips.
+    (function beatWordmark() {
+      heart.style.opacity = DIM;
+      const flash = () => {
+        heart.style.transition = 'opacity 0.05s ease-in';
+        heart.style.opacity = BRIGHT;
+        setTimeout(() => {
+          heart.style.transition = 'opacity 0.85s ease-out';
+          heart.style.opacity = DIM;
+        }, 60);
+      };
+      setInterval(() => {
+        if (Math.floor(Math.random() * 500) === 0) {
+          setTimeout(flash, 1200);
+          setTimeout(flash, 1450);
+          return;
+        }
+        flash();
+      }, (60 / 52) * 1000);
+    })();
+
+    // Stand-in frames. On a phone these are the previews the camera hands back.
+    const PALETTE = [
+      ['#f3b57a', '#c25f4a'], ['#8fb3d9', '#3f5f8a'], ['#e7d3a1', '#a3835a'],
+      ['#c8a2c8', '#6a4b7a'], ['#9dc6a1', '#4d7a58'], ['#f0a5a5', '#a85c6b'],
+      ['#a9bcc9', '#5a6b78'], ['#e2c48f', '#8a6a3f'],
+    ];
+    function makeFrame() {
+      const [a, b] = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+      const angle = Math.floor(Math.random() * 360);
+      return {
+        css: `linear-gradient(${angle}deg, ${a}, ${b})`,
+        // The real score comes from Vision; here it just has to spread across
+        // the threshold the way a burst of real frames does.
+        score: Math.round(Math.random() * 100) / 100,
+      };
+    }
+
+    function pulse() {
+      beat.classList.remove('is-beating');
+      void beat.offsetWidth;
+      beat.classList.add('is-beating');
+      // lub-dub, the same two transients the haptic pattern plays
+      if (navigator.vibrate) navigator.vibrate([28, 92, 20]);
+    }
+
+    function begin() {
+      if (phase !== 'idle') return;
+      phase = 'capturing';
+      captured = [];
+      sheet.classList.remove('is-on');
+      home.classList.add('is-hidden');
+      controls.classList.add('is-hidden');
+
+      // One beat at contact, before the first photo.
+      pulse();
+      captureTimer = setInterval(() => {
+        pulse();
+        captured.push(makeFrame());
+        if (captured.length >= MAX_PHOTOS) end();
+      }, interval * 1000);
+    }
+
+    function end() {
+      if (phase !== 'capturing') return;
+      phase = 'ending';
+      clearInterval(captureTimer);
+
+      if (!captured.length) {
+        reset();
+        return;
+      }
+      phase = 'celebrating';
+      tumble();
+    }
+
+    // TumbleAnimationViewController: the frames fall into a stack, then blow
+    // outward and take the session with them.
+    function tumble() {
+      const size = 96;
+      const cx = phone.clientWidth / 2;
+      const cy = phone.clientHeight / 2;
+      const views = captured.map((frame, i) => {
+        const el = document.createElement('div');
+        el.className = 'frame';
+        el.style.cssText = `width:${size}px;height:${size}px;background:${frame.css};
+          left:${cx - size / 2 + rand(-12, 12)}px;top:${cy - size / 2 + rand(-12, 12)}px;
+          opacity:0;transform:scale(1.8) rotate(${rand(-7, 7)}deg);`;
+        phone.appendChild(el);
+        setTimeout(() => {
+          el.style.transition = 'opacity 0.25s ease-out, transform 0.25s ease-out';
+          el.style.opacity = 1;
+          el.style.transform = `scale(1) rotate(${rand(-7, 7)}deg)`;
+        }, i * 25);
+        return el;
+      });
+
+      const settle = views.length * 25 + 320;
+      const radius = Math.max(phone.clientWidth, phone.clientHeight);
+      views.forEach((el, i) => {
+        setTimeout(() => {
+          const angle = (i / views.length) * 2 * Math.PI + rand(-0.4, 0.4);
+          const distance = radius * (0.8 + Math.random() * 0.3);
+          el.style.transition = 'opacity 0.45s ease-out, transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1)';
+          el.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px)
+            rotate(${rand(-230, 230)}deg) scale(0.4)`;
+          el.style.opacity = 0;
+        }, settle + i * 10);
+      });
+
+      setTimeout(() => {
+        views.forEach((el) => el.remove());
+        save();
+      }, settle + views.length * 10 + 520);
+    }
+
+    // CurationPolicy.selectionIndices: everything at or above the threshold, or
+    // the single best if nothing passes.
+    function save() {
+      phase = 'saving';
+      const passing = captured.filter((f) => f.score >= QUALITY_THRESHOLD);
+      const kept = passing.length ? passing : [captured.reduce((a, b) => (a.score > b.score ? a : b))];
+
+      grid.innerHTML = '';
+      captured.forEach((frame) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'thumb';
+        thumb.style.background = frame.css;
+        thumb.innerHTML = `<span>${frame.score.toFixed(2)}</span>`;
+        grid.appendChild(thumb);
+        if (!kept.includes(frame)) {
+          setTimeout(() => thumb.classList.add('is-dropped'), 600);
+        }
+      });
+
+      sheetHead.innerHTML = `<b>${kept.length}</b> of ${captured.length} frames saved to your library.`;
+      sheet.classList.add('is-on');
+    }
+
+    function reset() {
+      phase = 'idle';
+      sheet.classList.remove('is-on');
+      home.classList.remove('is-hidden');
+      controls.classList.remove('is-hidden');
+    }
+
+    function rand(min, max) { return min + Math.random() * (max - min); }
+
+    phone.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (phase === 'saving' || phase === 'celebrating') {
+        if (phase === 'saving') reset();
+        return;
+      }
+      if (e.target.closest('button')) return;
+      begin();
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach((event) => {
+      phone.addEventListener(event, () => end());
+    });
+
+    document.getElementById('intervals').addEventListener('click', (e) => {
+      const button = e.target.closest('button');
+      if (!button) return;
+      interval = parseFloat(button.dataset.interval);
+      document.querySelectorAll('#intervals button').forEach((b) => b.classList.toggle('is-on', b === button));
+    });
+
+    // One lens at a time; the flash is independent of the selection.
+    document.getElementById('lenses').addEventListener('click', (e) => {
+      const button = e.target.closest('.lens');
+      if (!button) return;
+      document.querySelectorAll('.lens').forEach((b) => b.classList.toggle('is-on', b === button));
+    });
+
+    document.getElementById('flash').addEventListener('click', (e) => {
+      e.currentTarget.classList.toggle('is-on');
+    });
+  </script>
+</body>
+</html>
