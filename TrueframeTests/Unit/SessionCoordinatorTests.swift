@@ -196,6 +196,16 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(haptics.endCount, 1)
     }
 
+    func testEngineFailingToStart_returnsToIdle() async {
+        engine.finishesStreamOnStart = true
+        sut.beginSession()
+        XCTAssertEqual(sut.phase, .capturing)
+        await waitUntil { self.engine.startCallCount == 1 }
+
+        await waitUntil { self.sut.phase == .idle }
+        XCTAssertEqual(haptics.endCount, 1)
+    }
+
     func testEndSession_whilePreparingHaptics_endsHapticsAfterPrepare() async {
         haptics.holdsPrepare = true
         sut.beginSession()

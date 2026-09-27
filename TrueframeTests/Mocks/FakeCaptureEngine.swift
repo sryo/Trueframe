@@ -16,6 +16,9 @@ final class FakeCaptureEngine: CaptureEngineProtocol {
     /// Events yielded from stop() before the stream finishes, like in-flight captures draining.
     var eventsDrainedOnStop: [CaptureEvent] = []
 
+    /// When true, start() returns a stream that has already ended, as a configuration failure would.
+    var finishesStreamOnStart = false
+
     /// While true, start() suspends until releaseStart().
     var holdsStart = false
     private var startGate: CheckedContinuation<Void, Never>?
@@ -36,6 +39,7 @@ final class FakeCaptureEngine: CaptureEngineProtocol {
         isRunning = true
         let (stream, continuation) = AsyncStream.makeStream(of: CaptureEvent.self)
         self.continuation = continuation
+        if finishesStreamOnStart { finishStream() }
         return stream
     }
 

@@ -74,6 +74,7 @@ actor CaptureEngine: CaptureEngineProtocol {
         self.continuation?.finish()
         self.continuation = continuation
         isRunning = true
+        cadenceTask?.cancel()
         cadenceTask = Task { await runCadence(configuration) }
         return stream
     }
@@ -174,6 +175,8 @@ actor CaptureEngine: CaptureEngineProtocol {
     // MARK: - Cadence
 
     private func runCadence(_ configuration: CaptureConfiguration) async {
+        // stop() may already have run while this task waited for the actor.
+        guard isRunning, !Task.isCancelled else { return }
         do {
             try configureIfNeeded(configuration)
         } catch {
