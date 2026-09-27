@@ -59,11 +59,24 @@ actor CaptureEngine: CaptureEngineProtocol {
     private var cadenceTask: Task<Void, Never>?
     private var continuation: AsyncStream<CaptureEvent>.Continuation?
     private var inFlightDelegates: [Int64: PhotoCaptureDelegate] = [:]
-
-    // MARK: - Public API
+    // The actor is reentrant: while a prewarm awaits prepared settings, other
+    // calls would run. Each prewarm chains onto the last, and the cadence
+    // waits for the chain before touching the session.
+    private var pendingPrewarm: Task<Void, Never>?
 
     func prewarm(_ configuration: CaptureConfiguration) async {
-        guard (try? configureIfNeeded(configuration)) != nil else { return }
+        let previous = pendingPrewarm
+        let prewarming = Task {
+            await previous?.value
+            await prepare(configuration)
+        }
+        pendingPrewarm = prewarming
+        await prewarming.value
+    }
+
+    private func prepare(_ configuration: CaptureConfiguration) async {
+        // A running session configures itself; reconfiguring under it would race its captures.
+        guard !isRunning, (try? configureIfNeeded(configuration)) != nil else { return }
         if !session.isRunning { session.startRunning() }
         // Preallocate capture resources so the first shot isn't slowed by
         // allocation. The actual capture uses a NEW, identically configured
@@ -92,7 +105,8 @@ actor CaptureEngine: CaptureEngineProtocol {
         motion.stop()
 
         // Drain in-flight captures so their events reach the stream, bounded at 2s.
-        for _ in 0..<80 where !inFlightDelegates.isEmpty {
+        for _ in 0..<80 {
+            if inFlightDelegates.isEmpty { break }
             try? await Task.sleep(for: .milliseconds(25))
         }
 
@@ -101,8 +115,6 @@ actor CaptureEngine: CaptureEngineProtocol {
         // The session keeps running so the next session starts instantly;
         // prewarm() is called again when the app returns to idle.
     }
-
-    // MARK: - Session Configuration
 
     private func configureIfNeeded(_ configuration: CaptureConfiguration) throws {
         guard configuredLens != configuration.lens else { return }
@@ -182,10 +194,9 @@ actor CaptureEngine: CaptureEngineProtocol {
         return pick ?? CMVideoDimensions(width: 4032, height: 3024)
     }
 
-    // MARK: - Cadence
-
     private func runCadence(_ configuration: CaptureConfiguration) async {
-        // stop() may already have run while this task waited for the actor.
+        await pendingPrewarm?.value
+        // stop() may have run while this task waited for the actor or a prewarm.
         guard isRunning, !Task.isCancelled else { return }
         do {
             try configureIfNeeded(configuration)
@@ -263,14 +274,10 @@ actor CaptureEngine: CaptureEngineProtocol {
         return settings
     }
 
-    // MARK: - Delegate Callbacks
-
     fileprivate func handleFinished(captureID: Int64) {
         inFlightDelegates[captureID] = nil
     }
 }
-
-// MARK: - Per-Capture Delegate
 
 // One short-lived delegate per shot; the engine retains it until
 // didFinishCaptureFor. All stored state is immutable, so crossing from the
