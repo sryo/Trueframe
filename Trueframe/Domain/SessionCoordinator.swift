@@ -30,6 +30,7 @@ final class SessionCoordinator {
     @ObservationIgnored private var proximityTask: Task<Void, Never>?
     @ObservationIgnored private var eventTask: Task<Void, Never>?
     @ObservationIgnored private(set) var saveTask: Task<Void, Never>?
+    @ObservationIgnored private(set) var libraryWrite: Task<Void, Never>?
     @ObservationIgnored private var consecutiveDarkFrames = 0
 
     init(
@@ -100,7 +101,12 @@ final class SessionCoordinator {
         guard phase == .celebrating else { return }
         phase = .saving
         saveTask = Task {
-            await saveBestPhotos()
+            let items = await curatedItems()
+            // The photo library may take arbitrarily long to answer; the items
+            // are already in memory, so the next session need not wait for it
+            if !items.isEmpty {
+                libraryWrite = Task { await writeToLibrary(items) }
+            }
             await resetToIdle()
         }
     }
@@ -181,9 +187,9 @@ final class SessionCoordinator {
 
     // MARK: - Saving
 
-    private func saveBestPhotos() async {
+    private func curatedItems() async -> [LibrarySaver.Item] {
         let entries = await store.allEntries()
-        guard !entries.isEmpty else { return }
+        guard !entries.isEmpty else { return [] }
 
         let scores = await scorer.scores(for: entries.map(\.preview))
         let selected = CurationPolicy.selectionIndices(scores: scores)
@@ -196,6 +202,10 @@ final class SessionCoordinator {
             }
         }
 
+        return items
+    }
+
+    private func writeToLibrary(_ items: [LibrarySaver.Item]) async {
         let saved = await saver.save(items)
         if saved > 0 {
             UINotificationFeedbackGenerator().notificationOccurred(.success)

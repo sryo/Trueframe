@@ -296,12 +296,30 @@ final class SessionCoordinatorTests: XCTestCase {
 
         let saveTask = try XCTUnwrap(sut.saveTask)
         await saveTask.value
+        await sut.libraryWrite?.value
 
         XCTAssertEqual(sut.phase, .idle)
         XCTAssertTrue(sut.sessionPreviews.isEmpty)
         let batches = await saver.savedBatches
         XCTAssertEqual(batches.count, 1)
         XCTAssertEqual(batches.first?.map(\.data), [keeper.fileData])
+    }
+
+    func testTumbleAnimationComplete_withHungLibraryWrite_stillReturnsToIdle() async throws {
+        await saver.holdSaves()
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+        engine.emitCapturedPhoto()
+        await waitForStoredPhotos(1)
+        await sut.endSession()
+
+        sut.tumbleAnimationComplete()
+        await waitUntil { self.sut.phase == .idle }
+
+        XCTAssertEqual(sut.phase, .idle)
+        await waitUntil { await self.saver.savedBatches.first?.count == 1 }
+        await saver.releaseSaves()
+        await sut.libraryWrite?.value
     }
 
     // MARK: - Heartbeat
