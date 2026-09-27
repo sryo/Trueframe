@@ -1,6 +1,5 @@
-// Plays haptic feedback during capture.
-
 import CoreHaptics
+import os
 import UIKit
 
 @MainActor
@@ -20,6 +19,7 @@ protocol HeartbeatEngine: AnyObject {
 
 @MainActor
 final class HapticHeartbeatService: HeartbeatPlaying {
+    private static let logger = Logger(subsystem: "com.trueframe.app", category: "HapticHeartbeatService")
     private let makeEngine: @MainActor () -> (any HeartbeatEngine)?
     private var engine: (any HeartbeatEngine)?
     private var sessionGeneration = 0
@@ -41,7 +41,7 @@ final class HapticHeartbeatService: HeartbeatPlaying {
             }
             engine = newEngine
         } catch {
-            print("[HapticHeartbeatService] Failed to prepare: \(error)")
+            Self.logger.error("Preparing haptics failed: \(error, privacy: .public)")
         }
     }
 
@@ -58,16 +58,18 @@ final class HapticHeartbeatService: HeartbeatPlaying {
 
 @MainActor
 final class CoreHapticsHeartbeat: HeartbeatEngine {
+    private static let logger = Logger(subsystem: "com.trueframe.app", category: "CoreHapticsHeartbeat")
+
     private let engine: CHHapticEngine
     private var player: CHHapticPatternPlayer?
-    private var isStopped = false
+    private var restartGate = HeartbeatRestartGate()
 
     static func make() -> (any HeartbeatEngine)? {
         guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return nil }
         do {
             return try CoreHapticsHeartbeat()
         } catch {
-            print("[CoreHapticsHeartbeat] Failed to create engine: \(error)")
+            Self.logger.error("Creating the haptic engine failed: \(error, privacy: .public)")
             return nil
         }
     }
@@ -91,16 +93,33 @@ final class CoreHapticsHeartbeat: HeartbeatEngine {
     }
 
     func stop() {
-        isStopped = true
+        restartGate.stop()
         player = nil
         engine.stop()
     }
 
-    // After a reset the engine must be started again and its players recreated
+    // After a reset the engine must be started again and its players recreated.
+    // stop() can land while the engine is starting, so the gate is rechecked after.
     private func restart() {
-        guard !isStopped else { return }
+        guard let token = restartGate.beginRestart() else { return }
         player = nil
-        Task { try? await start() }
+        Task { [weak self] in
+            guard let self, restartGate.isCurrent(token) else { return }
+            do {
+                try await engine.start()
+                try finishRestart(token)
+            } catch {
+                Self.logger.error("Restarting haptics failed: \(error, privacy: .public)")
+            }
+        }
+    }
+
+    private func finishRestart(_ token: Int) throws {
+        guard restartGate.isCurrent(token) else {
+            if restartGate.isStopped { engine.stop() }
+            return
+        }
+        player = try engine.makePlayer(with: Self.heartbeatPattern())
     }
 
     private static func heartbeatPattern() throws -> CHHapticPattern {
@@ -124,5 +143,27 @@ final class CoreHapticsHeartbeat: HeartbeatEngine {
         )
 
         return try CHHapticPattern(events: [lub, dub], parameters: [])
+    }
+}
+
+/// Decides whether an asynchronous engine restart is still wanted once it
+/// resumes: stop() or a newer restart invalidates every earlier one.
+struct HeartbeatRestartGate {
+    private(set) var isStopped = false
+    private var generation = 0
+
+    mutating func beginRestart() -> Int? {
+        guard !isStopped else { return nil }
+        generation += 1
+        return generation
+    }
+
+    func isCurrent(_ token: Int) -> Bool {
+        !isStopped && token == generation
+    }
+
+    mutating func stop() {
+        isStopped = true
+        generation += 1
     }
 }
