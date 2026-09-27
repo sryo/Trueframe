@@ -5,18 +5,25 @@ import XCTest
 
 final class SessionStoreTests: XCTestCase {
 
-    var sut: SessionStore!
+    private var directory: URL!
+    private var sut: SessionStore!
 
     override func setUp() async throws {
         try await super.setUp()
-        sut = SessionStore()
-        await sut.clearSession()
+        directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        sut = SessionStore(directory: directory)
     }
 
     override func tearDown() async throws {
-        await sut.clearSession()
         sut = nil
+        try? FileManager.default.removeItem(at: directory)
+        directory = nil
         try await super.tearDown()
+    }
+
+    private func storedFiles() -> [String] {
+        (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
     }
 
     func testEmptyStore_hasNoEntries() async {
@@ -89,5 +96,21 @@ final class SessionStoreTests: XCTestCase {
         let entries = await sut.allEntries()
         XCTAssertEqual(entries.first?.isProxy, true)
         XCTAssertEqual(entries.first?.capturedAt, date)
+    }
+
+    func testAdd_writesIntoInjectedDirectory() async {
+        let asset = FakeCaptureEngine.makeAsset()
+
+        await sut.add(asset)
+
+        XCTAssertEqual(storedFiles(), ["\(asset.id.uuidString).photo"])
+    }
+
+    func testClearSession_emptiesInjectedDirectory() async {
+        await sut.add(FakeCaptureEngine.makeAsset())
+
+        await sut.clearSession()
+
+        XCTAssertTrue(storedFiles().isEmpty)
     }
 }

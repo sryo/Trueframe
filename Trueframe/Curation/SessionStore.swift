@@ -13,10 +13,14 @@ actor SessionStore {
     private let directory: URL
     private var entries: [Entry] = []
 
-    init() {
+    static var defaultDirectory: URL {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        directory = base.appendingPathComponent("CaptureSession", isDirectory: true)
+        return base.appendingPathComponent("CaptureSession", isDirectory: true)
+    }
+
+    init(directory: URL = SessionStore.defaultDirectory) {
+        self.directory = directory
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
