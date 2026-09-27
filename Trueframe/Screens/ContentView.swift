@@ -12,11 +12,10 @@ struct ContentView: View {
                         if coordinator.isCapturing {
                             CaptureScreen(
                                 heartFrame: heartFrame,
-                                captures: coordinator.capturedCount,
-                                handoffOpacity: HeartbeatKeyframes(isNearFullMoon: Date.now.isNearFullMoon).restingOpacity
+                                captures: coordinator.capturedCount
                             )
                             // Home is already black underneath; only its content needs to leave
-                            .transition(.identity)
+                            .transition(.asymmetric(insertion: .identity, removal: .opacity.animation(Motion.dismiss)))
                         }
 
                         if coordinator.showingTumbleAnimation {

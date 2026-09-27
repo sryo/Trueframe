@@ -73,6 +73,8 @@ struct HomeScreen: View {
                         .offset(y: HeartGlyph.baselineOffset)
                         .revealPose(heartStaysPut ? .shown : state(.wordmark), reduceMotion: reduceMotion)
                         .opacity(sessionHoldsHeart ? 0 : 1)
+                        // Crossfades with the capture heart so a beat in progress never snaps
+                        .animation(sessionHoldsHeart ? Motion.dismiss : nil, value: sessionHoldsHeart)
                 }
                 .padding(.bottom, 50)
             }
