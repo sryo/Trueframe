@@ -1,5 +1,4 @@
-// Saves captured photos to the user's photo library.
-
+import os
 import Photos
 
 protocol PhotoSaving: Sendable {
@@ -7,6 +6,8 @@ protocol PhotoSaving: Sendable {
 }
 
 struct LibrarySaver: PhotoSaving {
+    private static let logger = Logger(subsystem: "com.trueframe.app", category: "LibrarySaver")
+
     struct Item: Sendable {
         let data: Data
         let isProxy: Bool
@@ -39,7 +40,7 @@ struct LibrarySaver: PhotoSaving {
             return items.count
         } catch {
             // The batch is all-or-nothing; salvage what we can one at a time
-            print("[LibrarySaver] Batch save failed, retrying individually: \(error)")
+            Self.logger.error("Batch save failed, retrying individually: \(error, privacy: .public)")
             var saved = 0
             for item in items {
                 do {
@@ -48,7 +49,7 @@ struct LibrarySaver: PhotoSaving {
                     }
                     saved += 1
                 } catch {
-                    print("[LibrarySaver] Failed to save photo: \(error)")
+                    Self.logger.error("Saving a photo failed: \(error, privacy: .public)")
                 }
             }
             return saved

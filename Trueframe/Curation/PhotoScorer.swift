@@ -1,5 +1,3 @@
-// Scores photo previews for automatic selection.
-
 import UIKit
 import Vision
 
