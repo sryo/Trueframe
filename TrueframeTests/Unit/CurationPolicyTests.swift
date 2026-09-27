@@ -33,6 +33,28 @@ final class CurationPolicyTests: XCTestCase {
         XCTAssertEqual(selected, [0, 1, 2])
     }
 
+    func testSelection_tieBelowThreshold_keepsEarliest() {
+        let scores: [Float] = [0.1, 0.3, 0.3, 0.2]
+
+        XCTAssertEqual(CurationPolicy.selectionIndices(scores: scores), [1])
+    }
+
+    func testSelection_singleScoreBelowThreshold_isKept() {
+        XCTAssertEqual(CurationPolicy.selectionIndices(scores: [0.05]), [0])
+    }
+
+    func testSelection_exactlyAtThreshold_isKept() {
+        let scores: [Float] = [0.1, CurationPolicy.qualityThreshold]
+
+        XCTAssertEqual(CurationPolicy.selectionIndices(scores: scores), [1])
+    }
+
+    func testSelection_preservesCaptureOrder() {
+        let scores: [Float] = [0.5, 0.9, 0.1, 0.7, 0.45]
+
+        XCTAssertEqual(CurationPolicy.selectionIndices(scores: scores), [0, 1, 3, 4])
+    }
+
     func testUnscorableScore_passesThreshold() {
         // Unscorable photos must fail open (be saved, not dropped)
         XCTAssertGreaterThanOrEqual(CurationPolicy.unscorableScore, CurationPolicy.qualityThreshold)
