@@ -29,6 +29,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.trueframe.app
         INFOPLIST_FILE: Trueframe/Resources/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
     info:
       path: Trueframe/Resources/Info.plist
       properties:
@@ -40,7 +41,6 @@ targets:
           UIImageName: ""
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        UIRequiresFullScreen: true
         UIUserInterfaceStyle: Dark
         NSCameraUsageDescription: "Trueframe captures photos when you cover the proximity sensor"
         NSPhotoLibraryAddUsageDescription: "Photos are saved to your Camera Roll"
