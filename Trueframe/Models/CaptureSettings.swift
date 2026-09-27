@@ -29,15 +29,15 @@ final class CaptureSettings {
         self.storedInterval = Self.sanitizedInterval(stored ?? Self.defaultInterval)
     }
 
-    static let intervalOptions: [Double] = [0.25, 0.5, 1.0, 2.0, 5.0]
-    static let defaultInterval = 1.0
+    nonisolated static let intervalOptions: [Double] = [0.25, 0.5, 1.0, 2.0, 5.0]
+    nonisolated static let defaultInterval = 1.0
 
-    static func sanitizedInterval(_ value: Double) -> Double {
+    nonisolated static func sanitizedInterval(_ value: Double) -> Double {
         guard value.isFinite, value > 0 else { return defaultInterval }
         return intervalOptions.min { abs($0 - value) < abs($1 - value) } ?? defaultInterval
     }
 
-    static func formatInterval(_ interval: Double) -> String {
+    nonisolated static func formatInterval(_ interval: Double) -> String {
         String(format: "%gs", interval)
     }
 }
