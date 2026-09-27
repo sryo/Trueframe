@@ -9,6 +9,19 @@ enum SessionHeart {
         .init(opacity: 0.4, scale: 1.0, duration: 0.06, easesOut: false),
         .init(opacity: afterglowResting, scale: 1.0, duration: 0.5, easesOut: true),
     ]
+
+    /// The heart is dark while the photos fly into it, then lights up as they land.
+    static let landingStart = 0.0
+    static let landingPeak = 0.9
+
+    /// One bright lub-dub that settles at the home heart's resting brightness.
+    static func landingBeat(settlingTo resting: HeartbeatKeyframes) -> [HeartbeatKeyframes.Step] {
+        let dim = resting.restingOpacity
+        let opacities = [landingPeak, dim + 0.35 * (landingPeak - dim), landingPeak * 0.85, dim]
+        return zip(resting.steps, opacities).map { step, opacity in
+            .init(opacity: opacity, scale: step.scale, duration: step.duration, easesOut: step.easesOut)
+        }
+    }
 }
 
 /// The wordmark heart glyph, shared so a session's heart covers the home one exactly.

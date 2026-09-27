@@ -8,6 +8,7 @@ struct HomeScreen: View {
     @State private var reveal: [HomeReveal.Part: HomeReveal.State] = [:]
     /// After the first session the heart never leaves its spot; home comes and goes around it.
     @State private var heartStaysPut = false
+    @State private var landings = 0
 
     private var sessionHoldsHeart: Bool {
         coordinator.isCapturing || coordinator.showingTumbleAnimation
@@ -74,7 +75,7 @@ struct HomeScreen: View {
                         .foregroundStyle(.white.opacity(0.20))
                         .revealPose(state(.wordmark), reduceMotion: reduceMotion)
 
-                    HeartbeatSymbol()
+                    HeartbeatSymbol(landings: landings)
                         .offset(y: HeartGlyph.baselineOffset)
                         .revealPose(heartStaysPut ? .shown : state(.wordmark), reduceMotion: reduceMotion)
                         .opacity(sessionHoldsHeart ? 0 : 1)
@@ -115,6 +116,7 @@ struct HomeScreen: View {
             if showing {
                 hideContent()
             } else if !coordinator.isCapturing {
+                landings += 1
                 showContent(delay: 0.3)
             }
         }
@@ -140,8 +142,12 @@ private struct HeartPose {
 }
 
 private struct HeartbeatSymbol: View {
+    /// Bumped when a session's photos have gathered into the heart.
+    let landings: Int
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var beat = 0
+    @State private var beatIsLanding = false
     @State private var keyframes = HeartbeatKeyframes(isNearFullMoon: Date.now.isNearFullMoon)
 
     var body: some View {
@@ -153,19 +159,28 @@ private struct HeartbeatSymbol: View {
                 .foregroundStyle(.white.opacity(reduceMotion ? keyframes.restingOpacity : pose.opacity))
                 .scaleEffect(reduceMotion ? 1 : pose.scale)
         } keyframes: { _ in
+            let steps = beatIsLanding ? SessionHeart.landingBeat(settlingTo: keyframes) : keyframes.steps
             KeyframeTrack(\.opacity) {
-                for step in keyframes.steps {
+                // The builder has no `if`; a landing beat jumps to dark first
+                for start in beatIsLanding ? [SessionHeart.landingStart] : [] {
+                    MoveKeyframe(start)
+                }
+                for step in steps {
                     LinearKeyframe(step.opacity, duration: step.duration, timingCurve: step.easesOut ? .easeOut : .linear)
                 }
             }
             KeyframeTrack(\.scale) {
-                for step in keyframes.steps {
+                for step in steps {
                     SpringKeyframe(step.scale, duration: step.duration, spring: .snappy)
                 }
             }
         }
         .accessibilityHidden(true)
         .anchorPreference(key: HeartAnchorKey.self, value: .bounds) { $0 }
+        .onChange(of: landings) {
+            beatIsLanding = true
+            beat += 1
+        }
         .task(id: reduceMotion) {
             guard !reduceMotion else { return }
             while !Task.isCancelled {
@@ -186,6 +201,7 @@ private struct HeartbeatSymbol: View {
     private func pulse() {
         let current = HeartbeatKeyframes(isNearFullMoon: Date.now.isNearFullMoon)
         if current != keyframes { keyframes = current }
+        beatIsLanding = false
         beat += 1
     }
 }

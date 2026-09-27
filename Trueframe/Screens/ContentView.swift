@@ -22,17 +22,19 @@ struct ContentView: View {
                         if coordinator.showingTumbleAnimation {
                             TumbleAnimationView(
                                 photos: coordinator.sessionPreviews,
+                                heartFrame: heartFrame,
+                                canvas: proxy.size,
                                 onComplete: {
                                     coordinator.tumbleAnimationComplete()
                                 }
                             )
-                            .transition(.opacity)
+                            // The photos bring their own entrance; a fade would hide it
+                            .transition(.identity)
                         }
                     }
                 }
                 .ignoresSafeArea()
             }
-            .animation(.easeInOut(duration: 0.3), value: coordinator.showingTumbleAnimation)
             .statusBarHidden(coordinator.isCapturing || coordinator.showingTumbleAnimation)
             .onChange(of: coordinator.isCapturing) { _, capturing in
                 if capturing {
