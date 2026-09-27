@@ -64,6 +64,7 @@ struct CameraToggleView: View {
                     ) {
                         settings.flashEnabled.toggle()
                     }
+                    .glassEffectID("flash", in: glassNamespace)
 
                     lens(.ultrawide, label: "0.5", accessibilityLabel: "Ultrawide camera")
                 }
@@ -128,44 +129,53 @@ private struct CameraLensButton: View {
 
 // MARK: - Flash Button
 
+enum FlashStyle {
+    static let minimumHitSize: CGFloat = 44
+
+    static func hitInset(visualSize: CGFloat) -> CGFloat {
+        -max(0, (minimumHitSize - visualSize) / 2)
+    }
+
+    static func accessibilityValue(isOn: Bool) -> String {
+        isOn ? "On" : "Off"
+    }
+
+    static func symbol(isOn: Bool) -> String {
+        isOn ? "bolt.fill" : "bolt.slash"
+    }
+}
+
 private struct FlashButton: View {
     let isEnabled: Bool
     let size: CGFloat
     let action: () -> Void
 
-    private let enabledColor = Color.yellow
-    private let disabledColor = Color.white.opacity(0.20)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let yellow = Color(red: 1, green: 214 / 255, blue: 10 / 255)
+    private let offColor = Color.white.opacity(0.20)
 
     var body: some View {
         Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(isEnabled ? enabledColor.opacity(0.2) : Color.white.opacity(0.03))
-                    .overlay(
-                        Circle()
-                            .strokeBorder(
-                                isEnabled ? enabledColor : disabledColor,
-                                lineWidth: 1.5
-                            )
-                    )
-                    .shadow(
-                        color: isEnabled ? enabledColor.opacity(0.3) : Color.clear,
-                        radius: 4,
-                        x: 0,
-                        y: 0
-                    )
-
-                Image(systemName: isEnabled ? "bolt.fill" : "bolt.slash")
-                    .font(.system(size: size * 0.4, weight: .medium))
-                    .foregroundStyle(isEnabled ? enabledColor : disabledColor)
-            }
-            .frame(width: size, height: size)
+            Image(systemName: FlashStyle.symbol(isOn: isEnabled))
+                .font(.system(size: size * 0.4, weight: .medium))
+                .foregroundStyle(isEnabled ? yellow : offColor)
+                .contentTransition(reduceMotion ? .opacity : .symbolEffect(.replace.downUp))
+                .frame(width: size, height: size)
+                .background(Circle().fill(isEnabled ? yellow.opacity(0.16) : .white.opacity(0.03)))
+                .overlay(
+                    Circle().strokeBorder(isEnabled ? yellow.opacity(0.85) : offColor, lineWidth: 1.5)
+                )
+                .glassEffect(.clear.interactive(), in: .circle)
+                .shadow(color: isEnabled ? yellow.opacity(0.2) : .clear, radius: 3)
+                .contentShape(Circle().inset(by: FlashStyle.hitInset(visualSize: size)))
+                .animation(reduceMotion ? Motion.fade : Motion.select, value: isEnabled)
         }
         .buttonStyle(PressStyle())
         .sensoryFeedback(.impact(weight: .light), trigger: isEnabled)
         .accessibilityLabel("Flash")
-        .accessibilityValue(isEnabled ? "On" : "Off")
-        .accessibilityHint("Double tap to toggle")
+        .accessibilityValue(FlashStyle.accessibilityValue(isOn: isEnabled))
+        .accessibilityAddTraits(.isToggle)
     }
 }
 
