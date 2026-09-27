@@ -107,6 +107,10 @@ final class SessionCoordinator {
             // the answer to "is it working?" on a screen the user can't see
             haptics.playHeartbeat()
             let events = await engine.start(configuration)
+            // A lift while the camera was starting may have stopped it before it ran
+            if phase != .capturing {
+                await engine.stop()
+            }
             for await event in events {
                 await handle(event)
             }

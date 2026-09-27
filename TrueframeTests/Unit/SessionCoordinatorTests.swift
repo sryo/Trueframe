@@ -211,6 +211,21 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(sut.phase, .idle)
     }
 
+    func testEndSession_whileEngineStarting_leavesEngineStopped() async {
+        engine.holdsStart = true
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+
+        let ending = Task { await sut.endSession() }
+        await Task.yield()
+        engine.releaseStart()
+        await waitUntil { self.sut.phase == .idle }
+
+        XCTAssertFalse(engine.isRunning, "Camera kept capturing after the lift")
+        engine.finishStream()
+        await ending.value
+    }
+
     // MARK: - Dark Frame Abort
 
     func testThreeConsecutiveDarkFrames_endSession() async {
