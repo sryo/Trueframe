@@ -1,5 +1,3 @@
-// Index math for the capture interval picker.
-
 import CoreGraphics
 
 enum IntervalPickerGeometry {

@@ -1,5 +1,3 @@
-// Storage space helpers.
-
 import Foundation
 
 extension FileManager {

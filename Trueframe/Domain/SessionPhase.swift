@@ -1,5 +1,3 @@
-// Capture session lifecycle state machine.
-
 /// The single source of truth for where a capture session is in its lifecycle.
 ///
 /// Legal transitions:

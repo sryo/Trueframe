@@ -1,5 +1,3 @@
-// Capture behavior settings.
-
 import Foundation
 import Observation
 

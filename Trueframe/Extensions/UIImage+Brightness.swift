@@ -1,9 +1,7 @@
-// Image brightness helpers.
-
 import UIKit
 
 extension UIImage {
-    // Returns average brightness (0.0 = black, 1.0 = white)
+    /// 0.0 is black, 1.0 is white.
     func averageBrightness() -> CGFloat {
         guard let cgImage = self.cgImage else { return 0.5 }
 

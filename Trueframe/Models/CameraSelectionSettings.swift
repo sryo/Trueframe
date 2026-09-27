@@ -1,5 +1,3 @@
-// Camera lens selection settings.
-
 import Foundation
 import Observation
 

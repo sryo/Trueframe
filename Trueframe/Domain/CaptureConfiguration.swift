@@ -1,5 +1,3 @@
-// Immutable snapshot of capture settings for one session.
-
 /// Settings are snapshotted at session start so mid-session changes
 /// to the bindable settings objects can't affect a running capture.
 struct CaptureConfiguration: Equatable, Sendable {
@@ -11,7 +9,6 @@ struct CaptureConfiguration: Equatable, Sendable {
     let flashEnabled: Bool
     let interval: Double
 
-    /// Whether flash should actually fire, after applying the burst rule.
     var resolvedFlashEnabled: Bool {
         flashEnabled && interval >= Self.minimumFlashInterval
     }

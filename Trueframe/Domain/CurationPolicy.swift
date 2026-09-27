@@ -1,5 +1,3 @@
-// Session limits and photo selection rules.
-
 import CoreGraphics
 
 enum CurationPolicy {
