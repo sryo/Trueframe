@@ -144,10 +144,14 @@ actor CaptureEngine: CaptureEngineProtocol {
         rotationCoordinator = AVCaptureDevice.RotationCoordinator(device: camera, previewLayer: nil)
 
         if camera.isFocusModeSupported(.continuousAutoFocus) {
-            try? camera.lockForConfiguration()
-            camera.focusMode = .continuousAutoFocus
-            camera.automaticallyAdjustsFaceDrivenAutoFocusEnabled = true
-            camera.unlockForConfiguration()
+            do {
+                try camera.lockForConfiguration()
+                defer { camera.unlockForConfiguration() }
+                camera.focusMode = .continuousAutoFocus
+                camera.automaticallyAdjustsFaceDrivenAutoFocusEnabled = true
+            } catch {
+                print("[CaptureEngine] Focus lock failed: \(error)")
+            }
         }
 
         configuredLens = configuration.lens
