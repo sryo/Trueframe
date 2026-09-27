@@ -41,5 +41,10 @@ struct ContentView: View {
                     AccessibilityNotification.Announcement(SessionAnnouncements.capturing).post()
                 }
             }
+            .onChange(of: coordinator.keptCount) { _, kept in
+                if let kept {
+                    AccessibilityNotification.Announcement(SessionAnnouncements.kept(kept)).post()
+                }
+            }
     }
 }

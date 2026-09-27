@@ -365,6 +365,41 @@ final class SessionCoordinatorTests: XCTestCase {
         await sut.libraryWrite?.value
     }
 
+    func testKeptCount_isUnknownUntilSavingHasSelected() async throws {
+        await scorer.setScores([0.9, 0.1, 0.5])
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+        engine.emitCapturedPhoto()
+        engine.emitCapturedPhoto()
+        engine.emitCapturedPhoto()
+        await waitForStoredPhotos(3)
+        await sut.endSession()
+        XCTAssertNil(sut.keptCount)
+
+        sut.tumbleAnimationComplete()
+        await sut.saveTask?.value
+
+        XCTAssertEqual(sut.keptCount, 2)
+        let batches = await saver.savedBatches
+        XCTAssertEqual(batches.first?.count, 2)
+    }
+
+    func testKeptCount_clearsWhenTheNextSessionBegins() async {
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+        engine.emitCapturedPhoto()
+        await waitForStoredPhotos(1)
+        await sut.endSession()
+        sut.tumbleAnimationComplete()
+        await sut.saveTask?.value
+        XCTAssertEqual(sut.keptCount, 1)
+
+        sut.beginSession()
+
+        XCTAssertNil(sut.keptCount)
+        await sut.endSession()
+    }
+
     // MARK: - Heartbeat
 
     func testHeartbeat_beatsOnContactAndBeforeEachCapture() async {

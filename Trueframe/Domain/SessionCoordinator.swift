@@ -11,6 +11,8 @@ final class SessionCoordinator {
     private(set) var hasPermissions = false
     /// Photos kept into the store this session; dark frames never count.
     private(set) var capturedCount = 0
+    /// How many photos saving picked from the last session; nil until it has picked.
+    private(set) var keptCount: Int?
 
     let captureSettings = CaptureSettings()
     let cameraSelectionSettings = CameraSelectionSettings()
@@ -81,6 +83,7 @@ final class SessionCoordinator {
         phase = .capturing
         consecutiveDarkFrames = 0
         capturedCount = 0
+        keptCount = nil
         sessionPreviews = []
 
         let configuration = currentConfiguration()
@@ -99,6 +102,7 @@ final class SessionCoordinator {
         phase = .saving
         saveTask = Task {
             let items = await curatedItems()
+            keptCount = items.count
             // The photo library may take arbitrarily long to answer; the items
             // are already in memory, so the next session need not wait for it
             if !items.isEmpty {

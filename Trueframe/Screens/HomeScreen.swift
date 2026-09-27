@@ -117,7 +117,7 @@ struct HomeScreen: View {
                 hideContent()
             } else if !coordinator.isCapturing {
                 landings += 1
-                showContent(delay: 0.3)
+                showContent(delay: 0)
             }
         }
         .onAppear {
