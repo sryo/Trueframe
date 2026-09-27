@@ -179,83 +179,98 @@ private struct HeartbeatSymbol: View {
 
 struct CaptureIntervalPicker: View {
     @Bindable var settings: CaptureSettings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var dragOffset: CGFloat = 0
-    @State private var lastPreviewIndex: Int = -1
 
     private let options = CaptureSettings.intervalOptions
-    private let itemWidth: CGFloat = 32
-    private let haptic = UIImpactFeedbackGenerator(style: .light)
+    /// Shorter than this, a touch counts as a tap on the value under it.
+    private let tapSlop: CGFloat = 3
 
     private var currentIndex: Int {
-        options.firstIndex(of: settings.captureInterval) ?? 2
+        IntervalPickerGeometry.nearestIndex(for: settings.captureInterval)
     }
 
-    private var previewIndex: Int {
-        let offsetInItems = -dragOffset / itemWidth
-        let targetIndex = currentIndex + Int(round(offsetInItems))
-        return max(0, min(options.count - 1, targetIndex))
+    private var rowOffset: CGFloat {
+        ScrubWheelMath.rowOffset(for: currentIndex) + dragOffset
+    }
+
+    private var centeredIndex: Int {
+        ScrubWheelMath.nearestIndex(forRowOffset: rowOffset, count: options.count)
     }
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(Array(options.enumerated()), id: \.offset) { index, interval in
-                IntervalItem(
-                    interval: interval,
-                    isSelected: isItemSelected(index: index)
-                )
+        ZStack(alignment: .leading) {
+            Capsule()
+                .fill(Color.white.opacity(0.15))
+                .frame(width: ScrubWheelMath.itemWidth, height: 24)
+                .offset(x: (ScrubWheelMath.windowWidth - ScrubWheelMath.itemWidth) / 2)
+
+            HStack(spacing: IntervalPickerGeometry.spacing) {
+                ForEach(options.indices, id: \.self) { index in
+                    let distance = ScrubWheelMath.distance(of: index, rowOffset: rowOffset)
+                    IntervalItem(
+                        interval: options[index],
+                        isCentered: ScrubWheelMath.isCentered(atDistance: distance)
+                    )
+                    .scaleEffect(ScrubWheelMath.scale(atDistance: distance))
+                    .opacity(ScrubWheelMath.opacity(atDistance: distance))
+                }
+            }
+            .offset(x: rowOffset)
+        }
+        .frame(width: ScrubWheelMath.windowWidth, height: 32, alignment: .leading)
+        .background(Capsule().fill(Color.white.opacity(0.08)))
+        .clipShape(Capsule())
+        .frame(height: 44)
+        .contentShape(Rectangle())
+        .gesture(scrub)
+        .sensoryFeedback(.selection, trigger: centeredIndex)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Capture interval")
+        .accessibilityValue(ScrubWheelMath.accessibilityValue(for: options[currentIndex]))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: select(ScrubWheelMath.steppedIndex(from: currentIndex, by: 1, count: options.count))
+            case .decrement: select(ScrubWheelMath.steppedIndex(from: currentIndex, by: -1, count: options.count))
+            @unknown default: break
             }
         }
-        .offset(x: dragOffset)
-        .gesture(dragGesture)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(
-            Capsule()
-                .fill(Color.white.opacity(0.08))
-        )
-        .onAppear {
-            haptic.prepare()
-        }
     }
 
-    private func isItemSelected(index: Int) -> Bool {
-        dragOffset == 0 ? (index == currentIndex) : (index == previewIndex)
-    }
-
-    private var dragGesture: some Gesture {
-        DragGesture()
+    private var scrub: some Gesture {
+        DragGesture(minimumDistance: 0)
             .onChanged { value in
                 dragOffset = value.translation.width
-                let newPreview = previewIndex
-                if newPreview != lastPreviewIndex {
-                    haptic.impactOccurred()
-                    lastPreviewIndex = newPreview
-                }
             }
-            .onEnded { _ in
-                let newIndex = previewIndex
-                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-                    settings.captureInterval = options[newIndex]
-                    dragOffset = 0
-                }
-                lastPreviewIndex = -1
+            .onEnded { value in
+                let index = abs(value.translation.width) < tapSlop
+                    ? ScrubWheelMath.tappedIndex(
+                        atX: value.location.x,
+                        rowOffset: ScrubWheelMath.rowOffset(for: currentIndex),
+                        count: options.count
+                    )
+                    : centeredIndex
+                select(index)
             }
+    }
+
+    private func select(_ index: Int) {
+        withAnimation(reduceMotion ? nil : Motion.snap) {
+            settings.captureInterval = options[index]
+            dragOffset = 0
+        }
     }
 }
 
 private struct IntervalItem: View {
     let interval: Double
-    let isSelected: Bool
+    let isCentered: Bool
 
     var body: some View {
         Text(CaptureSettings.formatInterval(interval))
-            .font(.system(size: 10, weight: isSelected ? .bold : .regular))
-            .foregroundStyle(isSelected ? .white : .white.opacity(0.3))
-            .frame(width: 32, height: 24)
-            .background(
-                Capsule()
-                    .fill(isSelected ? Color.white.opacity(0.15) : Color.clear)
-            )
+            .font(.system(size: 10, weight: isCentered ? .bold : .regular))
+            .foregroundStyle(isCentered ? .white : .white.opacity(0.3))
+            .frame(width: ScrubWheelMath.itemWidth, height: 24)
     }
 }
 
