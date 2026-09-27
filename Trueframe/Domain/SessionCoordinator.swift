@@ -76,9 +76,33 @@ final class SessionCoordinator {
         sessionPreviews = []
 
         let configuration = currentConfiguration()
-        eventTask = Task {
-            await store.clearSession()
-            await haptics.prepareForSession()
+        eventTask = Task { await runSession(configuration) }
+    }
+
+    /// Returns once the engine has drained and the session has settled.
+    func endSession() async {
+        guard phase == .capturing else { return }
+        await stopCapturing()
+        await eventTask?.value
+    }
+
+    func tumbleAnimationComplete() {
+        guard phase == .celebrating else { return }
+        phase = .saving
+        saveTask = Task {
+            await saveBestPhotos()
+            await resetToIdle()
+        }
+    }
+
+    // MARK: - Session Run
+
+    // Everything from first beat to teardown runs in this one task, so the
+    // drain after stop() is consumed and teardown happens exactly once.
+    private func runSession(_ configuration: CaptureConfiguration) async {
+        await store.clearSession()
+        await haptics.prepareForSession()
+        if phase == .capturing {
             // One beat at the moment of contact, before the first photo:
             // the answer to "is it working?" on a screen the user can't see
             haptics.playHeartbeat()
@@ -87,16 +111,11 @@ final class SessionCoordinator {
                 await handle(event)
             }
         }
-    }
 
-    func endSession() async {
-        guard phase == .capturing else { return }
-        phase = .ending
-
-        await engine.stop()
+        if phase == .capturing {
+            await stopCapturing()
+        }
         haptics.endSession()
-        eventTask?.cancel()
-        eventTask = nil
 
         let previews = await store.previews
         if previews.isEmpty {
@@ -107,13 +126,9 @@ final class SessionCoordinator {
         }
     }
 
-    func tumbleAnimationComplete() {
-        guard phase == .celebrating else { return }
-        phase = .saving
-        saveTask = Task {
-            await saveBestPhotos()
-            await resetToIdle()
-        }
+    private func stopCapturing() async {
+        phase = .ending
+        await engine.stop()
     }
 
     // MARK: - Event Handling
@@ -136,7 +151,7 @@ final class SessionCoordinator {
             guard phase == .capturing else { return }
             consecutiveDarkFrames += 1
             if consecutiveDarkFrames >= CurationPolicy.maxConsecutiveDarkFrames {
-                await endSession()
+                await stopCapturing()
             }
             return
         }
@@ -146,7 +161,7 @@ final class SessionCoordinator {
 
         guard phase == .capturing else { return }
         if await store.count >= CurationPolicy.maxPhotosPerSession || !FileManager.default.hasAdequateSpace {
-            await endSession()
+            await stopCapturing()
         }
     }
 

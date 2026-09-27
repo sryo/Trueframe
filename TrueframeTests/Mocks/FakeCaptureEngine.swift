@@ -11,6 +11,14 @@ final class FakeCaptureEngine: CaptureEngineProtocol {
     private(set) var startCallCount = 0
     private(set) var stopCallCount = 0
     private(set) var lastConfiguration: CaptureConfiguration?
+    private(set) var isRunning = false
+
+    /// Events yielded from stop() before the stream finishes, like in-flight captures draining.
+    var eventsDrainedOnStop: [CaptureEvent] = []
+
+    /// While true, start() suspends until releaseStart().
+    var holdsStart = false
+    private var startGate: CheckedContinuation<Void, Never>?
 
     private var continuation: AsyncStream<CaptureEvent>.Continuation?
 
@@ -22,6 +30,10 @@ final class FakeCaptureEngine: CaptureEngineProtocol {
     func start(_ configuration: CaptureConfiguration) async -> AsyncStream<CaptureEvent> {
         startCallCount += 1
         lastConfiguration = configuration
+        if holdsStart {
+            await withCheckedContinuation { startGate = $0 }
+        }
+        isRunning = true
         let (stream, continuation) = AsyncStream.makeStream(of: CaptureEvent.self)
         self.continuation = continuation
         return stream
@@ -29,11 +41,28 @@ final class FakeCaptureEngine: CaptureEngineProtocol {
 
     func stop() async {
         stopCallCount += 1
+        isRunning = false
+        for event in eventsDrainedOnStop {
+            continuation?.yield(event)
+        }
         continuation?.finish()
         continuation = nil
     }
 
     // MARK: - Test Controls
+
+    func releaseStart() {
+        holdsStart = false
+        startGate?.resume()
+        startGate = nil
+    }
+
+    /// Ends the stream from the engine's side, as a capture failure would.
+    func finishStream() {
+        isRunning = false
+        continuation?.finish()
+        continuation = nil
+    }
 
     func emit(_ event: CaptureEvent) {
         continuation?.yield(event)

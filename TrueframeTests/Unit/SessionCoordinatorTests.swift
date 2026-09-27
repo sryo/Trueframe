@@ -147,6 +147,70 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(engine.stopCallCount, 0)
     }
 
+    func testEndSession_keepsCapturesDrainedByStop() async {
+        engine.eventsDrainedOnStop = [.captured(FakeCaptureEngine.makeAsset())]
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+        engine.emitCapturedPhoto()
+        await waitForStoredPhotos(1)
+
+        await sut.endSession()
+
+        XCTAssertEqual(sut.phase, .celebrating)
+        XCTAssertEqual(sut.sessionPreviews.count, 2)
+    }
+
+    func testEndSession_drainedCaptureAloneStillCelebrates() async {
+        engine.eventsDrainedOnStop = [.captured(FakeCaptureEngine.makeAsset())]
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+
+        await sut.endSession()
+
+        XCTAssertEqual(sut.phase, .celebrating)
+        XCTAssertEqual(sut.sessionPreviews.count, 1)
+    }
+
+    func testAutoEnd_keepsCapturesDrainedByStop() async {
+        engine.eventsDrainedOnStop = [.captured(FakeCaptureEngine.makeAsset())]
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+
+        for _ in 0..<CurationPolicy.maxPhotosPerSession {
+            engine.emitCapturedPhoto()
+        }
+
+        await waitUntil { self.sut.phase == .celebrating }
+        XCTAssertEqual(sut.sessionPreviews.count, CurationPolicy.maxPhotosPerSession + 1)
+    }
+
+    func testEngineFinishingStream_endsSession() async {
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+        engine.emitCapturedPhoto()
+        await waitForStoredPhotos(1)
+
+        engine.finishStream()
+
+        await waitUntil { self.sut.phase == .celebrating }
+        XCTAssertEqual(haptics.endCount, 1)
+    }
+
+    func testEndSession_whilePreparingHaptics_endsHapticsAfterPrepare() async {
+        haptics.holdsPrepare = true
+        sut.beginSession()
+        await waitUntil { self.haptics.prepareCount == 1 }
+
+        let ending = Task { await sut.endSession() }
+        await Task.yield()
+        haptics.releasePrepare()
+        await ending.value
+        try? await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertFalse(haptics.isPrepared, "Haptic engine left running after the session ended")
+        XCTAssertEqual(sut.phase, .idle)
+    }
+
     // MARK: - Dark Frame Abort
 
     func testThreeConsecutiveDarkFrames_endSession() async {
