@@ -19,7 +19,7 @@ final class KeptAnnouncementTests: XCTestCase {
         XCTAssertEqual(SessionAnnouncements.kept(50), "50 photos kept")
     }
 
-    func testKept_none_isPlural() {
-        XCTAssertEqual(SessionAnnouncements.kept(0), "0 photos kept")
+    func testKept_none_saysNothingWasKept() {
+        XCTAssertEqual(SessionAnnouncements.kept(0), "nothing kept")
     }
 }

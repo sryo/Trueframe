@@ -3,6 +3,10 @@ enum SessionAnnouncements {
     static let capturing = "capturing"
 
     static func kept(_ count: Int) -> String {
-        count == 1 ? "1 photo kept" : "\(count) photos kept"
+        switch count {
+        case 0: "nothing kept"
+        case 1: "1 photo kept"
+        default: "\(count) photos kept"
+        }
     }
 }
