@@ -68,7 +68,11 @@ actor CaptureEngine: CaptureEngineProtocol {
         // Preallocate capture resources so the first shot isn't slowed by
         // allocation. The actual capture uses a NEW, identically configured
         // settings object (prepared settings can't be reused).
-        photoOutput.setPreparedPhotoSettingsArray([makePhotoSettings(configuration)], completionHandler: nil)
+        do {
+            _ = try await photoOutput.setPreparedPhotoSettingsArray([makePhotoSettings(configuration)])
+        } catch {
+            Self.logger.error("Preparing photo settings failed: \(error, privacy: .public)")
+        }
     }
 
     func start(_ configuration: CaptureConfiguration) -> AsyncStream<CaptureEvent> {
