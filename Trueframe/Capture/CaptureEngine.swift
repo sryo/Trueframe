@@ -126,7 +126,10 @@ actor CaptureEngine: CaptureEngineProtocol {
 
         // All output configuration happens before commitConfiguration();
         // changing it later triggers an expensive pipeline rebuild.
-        photoOutput.maxPhotoDimensions = Self.targetDimensions(for: camera)
+        photoOutput.maxPhotoDimensions = Self.targetDimensions(
+            from: camera.activeFormat.supportedMaxPhotoDimensions,
+            maxPixelCount: Self.maxPixelCount
+        )
         photoOutput.maxPhotoQualityPrioritization = .quality
         if photoOutput.isResponsiveCaptureSupported { photoOutput.isResponsiveCaptureEnabled = true }
         if photoOutput.isAutoDeferredPhotoDeliverySupported { photoOutput.isAutoDeferredPhotoDeliveryEnabled = true }
@@ -160,11 +163,11 @@ actor CaptureEngine: CaptureEngineProtocol {
             ?? AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
     }
 
-    private static func targetDimensions(for camera: AVCaptureDevice) -> CMVideoDimensions {
-        let supported = camera.activeFormat.supportedMaxPhotoDimensions
+    static func targetDimensions(from supported: [CMVideoDimensions], maxPixelCount: Int) -> CMVideoDimensions {
         let area: (CMVideoDimensions) -> Int = { Int($0.width) * Int($0.height) }
         let within = supported.filter { area($0) <= maxPixelCount }
-        let pick = within.max { area($0) < area($1) } ?? supported.max { area($0) < area($1) }
+        // When every size is over the cap, the smallest is the closest to it.
+        let pick = within.max { area($0) < area($1) } ?? supported.min { area($0) < area($1) }
         return pick ?? CMVideoDimensions(width: 4032, height: 3024)
     }
 
