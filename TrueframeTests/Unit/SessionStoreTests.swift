@@ -1,5 +1,3 @@
-// Unit tests for SessionStore.
-
 import XCTest
 @testable import Trueframe
 

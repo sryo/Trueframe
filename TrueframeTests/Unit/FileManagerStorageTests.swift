@@ -1,5 +1,3 @@
-// Unit tests for the free-space check.
-
 import XCTest
 @testable import Trueframe
 

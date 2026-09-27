@@ -1,5 +1,3 @@
-// Unit tests for CaptureConfiguration's flash rule.
-
 import XCTest
 @testable import Trueframe
 

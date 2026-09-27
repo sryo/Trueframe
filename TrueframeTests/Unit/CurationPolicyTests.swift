@@ -1,5 +1,3 @@
-// Unit tests for CurationPolicy selection rules.
-
 import XCTest
 @testable import Trueframe
 
@@ -59,8 +57,6 @@ final class CurationPolicyTests: XCTestCase {
         // Unscorable photos must fail open (be saved, not dropped)
         XCTAssertGreaterThanOrEqual(CurationPolicy.unscorableScore, CurationPolicy.qualityThreshold)
     }
-
-    // MARK: - Pitch black
 
     func testIsPitchBlack_belowThreshold() {
         XCTAssertTrue(CurationPolicy.isPitchBlack(brightness: 0))

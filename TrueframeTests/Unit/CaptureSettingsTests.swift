@@ -1,5 +1,3 @@
-// Unit tests for CaptureSettings.
-
 import XCTest
 @testable import Trueframe
 
@@ -24,8 +22,6 @@ final class CaptureSettingsTests: XCTestCase {
         try await super.tearDown()
     }
 
-    // MARK: - Defaults
-
     func testDefault_captureIntervalIsOneSecond() {
         XCTAssertEqual(sut.captureInterval, 1.0)
     }
@@ -34,8 +30,6 @@ final class CaptureSettingsTests: XCTestCase {
         XCTAssertEqual(CaptureSettings.intervalOptions, [0.25, 0.5, 1.0, 2.0, 5.0])
         XCTAssertTrue(CaptureSettings.intervalOptions.contains(sut.captureInterval))
     }
-
-    // MARK: - Persistence
 
     func testPersistence_everyOptionRoundTrips() {
         for interval in CaptureSettings.intervalOptions {
@@ -64,8 +58,6 @@ final class CaptureSettingsTests: XCTestCase {
 
         XCTAssertEqual(UserDefaults.standard.object(forKey: "capture.interval") as? Double, before)
     }
-
-    // MARK: - Sanitizing
 
     func testInit_storedOffGridValue_snapsToNearestOption() {
         defaults.set(2.4, forKey: "capture.interval")
@@ -108,8 +100,6 @@ final class CaptureSettingsTests: XCTestCase {
 
         XCTAssertEqual(sut.captureInterval, 1.0)
     }
-
-    // MARK: - Formatting
 
     func testFormatInterval_options() {
         let formats = CaptureSettings.intervalOptions.map(CaptureSettings.formatInterval)

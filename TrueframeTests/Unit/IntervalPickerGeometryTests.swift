@@ -1,5 +1,3 @@
-// Unit tests for the interval picker's index math.
-
 import XCTest
 @testable import Trueframe
 
@@ -10,8 +8,6 @@ final class IntervalPickerGeometryTests: XCTestCase {
         XCTAssertEqual(IntervalPickerGeometry.spacing, 4)
         XCTAssertEqual(IntervalPickerGeometry.pitch, 36)
     }
-
-    // MARK: - nearestIndex
 
     func testNearestIndex_exactOption() {
         for (index, option) in CaptureSettings.intervalOptions.enumerated() {
@@ -28,8 +24,6 @@ final class IntervalPickerGeometryTests: XCTestCase {
         XCTAssertEqual(IntervalPickerGeometry.nearestIndex(for: .nan), 2)
         XCTAssertEqual(IntervalPickerGeometry.nearestIndex(for: -1), 2)
     }
-
-    // MARK: - previewIndex
 
     private func preview(current: Int, drag: CGFloat, count: Int = 5) -> Int {
         IntervalPickerGeometry.previewIndex(current: current, dragOffset: drag, pitch: 36, count: count)

@@ -1,11 +1,7 @@
-// Unit tests for UIImage extensions.
-
 import XCTest
 @testable import Trueframe
 
 final class UIImageExtensionTests: XCTestCase {
-
-    // MARK: - averageBrightness Tests
 
     func testAverageBrightness_blackImage_returnsLowValue() {
         let blackImage = FakeCaptureEngine.makeImage(brightness: 0.0)
@@ -33,7 +29,6 @@ final class UIImageExtensionTests: XCTestCase {
     }
 
     func testAverageBrightness_invalidCGImage_returnsDefaultValue() {
-        // An image that might not have a valid CGImage
         let renderer = UIGraphicsImageRenderer(size: .zero)
         let emptyImage = renderer.image { _ in }
 
@@ -42,8 +37,6 @@ final class UIImageExtensionTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(brightness, 0.0)
         XCTAssertLessThanOrEqual(brightness, 1.0)
     }
-
-    // MARK: - isPitchBlack Tests
 
     func testIsPitchBlack_veryDarkImage_returnsTrue() {
         let darkImage = FakeCaptureEngine.makeImage(brightness: 0.02)

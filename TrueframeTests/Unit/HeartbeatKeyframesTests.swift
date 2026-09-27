@@ -1,5 +1,3 @@
-// Unit tests for the heart's lub-dub keyframes.
-
 import XCTest
 @testable import Trueframe
 

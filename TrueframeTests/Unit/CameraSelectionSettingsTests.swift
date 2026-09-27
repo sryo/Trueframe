@@ -1,5 +1,3 @@
-// Unit tests for CameraSelectionSettings.
-
 import XCTest
 @testable import Trueframe
 
@@ -24,8 +22,6 @@ final class CameraSelectionSettingsTests: XCTestCase {
         try await super.tearDown()
     }
 
-    // MARK: - Defaults
-
     func testDefault_wideSelected() {
         XCTAssertEqual(sut.selectedCamera, .wide)
     }
@@ -34,16 +30,12 @@ final class CameraSelectionSettingsTests: XCTestCase {
         XCTAssertFalse(sut.flashEnabled)
     }
 
-    // MARK: - Selection
-
     func testSelect_replacesPreviousSelection() {
         sut.select(.ultrawide)
         sut.select(.telephoto)
 
         XCTAssertEqual(sut.selectedCamera, .telephoto)
     }
-
-    // MARK: - Persistence
 
     func testPersistence_selectedCamera() {
         sut.select(.telephoto)
@@ -62,8 +54,6 @@ final class CameraSelectionSettingsTests: XCTestCase {
 
         XCTAssertEqual(CameraSelectionSettings(defaults: defaults).selectedCamera, .wide)
     }
-
-    // MARK: - BackCameraType
 
     func testBackCameraType_rawValueRoundTrip() {
         XCTAssertEqual(BackCameraType.allCases, [.wide, .ultrawide, .telephoto])

@@ -5,8 +5,6 @@ import XCTest
 
 final class HomeRevealTests: XCTestCase {
 
-    // MARK: - Delays
-
     func testLines_staggerByTwelveHundredthsFromTheStart() {
         XCTAssertEqual(HomeReveal.delay(for: .line(0), after: 0.2), 0.2, accuracy: 1e-9)
         XCTAssertEqual(HomeReveal.delay(for: .line(1), after: 0.2), 0.32, accuracy: 1e-9)
@@ -27,8 +25,6 @@ final class HomeRevealTests: XCTestCase {
         XCTAssertEqual(HomeReveal.lines, ["hold to your heart", "to capture life"])
         XCTAssertEqual(HomeReveal.Part.all, [.line(0), .line(1), .wordmark, .controls])
     }
-
-    // MARK: - Poses
 
     func testWaiting_isBelowBlurredAndInvisible() {
         let pose = HomeReveal.pose(for: .waiting, reduceMotion: false)

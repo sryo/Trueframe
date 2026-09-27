@@ -11,8 +11,6 @@ final class ScrubWheelMathTests: XCTestCase {
         XCTAssertEqual(ScrubWheelMath.itemWidth, 32)
     }
 
-    // MARK: - Offsets
-
     func testRowOffset_centersTheIndexInTheWindow() {
         XCTAssertEqual(ScrubWheelMath.rowOffset(for: 0), 44)
         XCTAssertEqual(ScrubWheelMath.rowOffset(for: 2), 44 - 72)
@@ -30,8 +28,6 @@ final class ScrubWheelMathTests: XCTestCase {
         XCTAssertEqual(ScrubWheelMath.nearestIndex(forRowOffset: 0, count: 0), 0)
     }
 
-    // MARK: - Tap
-
     func testTappedIndex_findsTheItemUnderTheFinger() {
         let offset = ScrubWheelMath.rowOffset(for: 2)
         XCTAssertEqual(ScrubWheelMath.tappedIndex(atX: 60, rowOffset: offset, count: 5), 2)
@@ -44,8 +40,6 @@ final class ScrubWheelMathTests: XCTestCase {
         XCTAssertEqual(ScrubWheelMath.tappedIndex(atX: 2, rowOffset: offset, count: 5), 0)
         XCTAssertEqual(ScrubWheelMath.tappedIndex(atX: 118, rowOffset: ScrubWheelMath.rowOffset(for: 4), count: 5), 4)
     }
-
-    // MARK: - Per-item appearance
 
     func testDistance_isFractionalWhileDragging() {
         let offset = ScrubWheelMath.rowOffset(for: 2) - 18
@@ -72,8 +66,6 @@ final class ScrubWheelMathTests: XCTestCase {
         XCTAssertTrue(ScrubWheelMath.isCentered(atDistance: 0.49))
         XCTAssertFalse(ScrubWheelMath.isCentered(atDistance: 0.5))
     }
-
-    // MARK: - Accessibility
 
     func testSteppedIndex_clamps() {
         XCTAssertEqual(ScrubWheelMath.steppedIndex(from: 2, by: 1, count: 5), 3)

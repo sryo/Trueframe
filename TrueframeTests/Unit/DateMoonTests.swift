@@ -1,5 +1,3 @@
-// Unit tests for the lunar phase arithmetic.
-
 import XCTest
 @testable import Trueframe
 
