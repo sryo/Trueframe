@@ -7,30 +7,62 @@ import XCTest
 final class SessionCoordinatorTests: XCTestCase {
 
     var engine: FakeCaptureEngine!
+    var scorer: FakePhotoScorer!
+    var saver: FakePhotoSaver!
+    var haptics: FakeHeartbeat!
+    var proximity: FakeProximitySource!
     var sut: SessionCoordinator!
 
     override func setUp() async throws {
         try await super.setUp()
         engine = FakeCaptureEngine()
-        sut = SessionCoordinator(engine: engine, requestPermissions: { true })
+        scorer = FakePhotoScorer()
+        saver = FakePhotoSaver()
+        haptics = FakeHeartbeat()
+        proximity = FakeProximitySource()
+        sut = makeCoordinator()
         await sut.start()
     }
 
     override func tearDown() async throws {
         engine = nil
+        scorer = nil
+        saver = nil
+        haptics = nil
+        proximity = nil
         sut = nil
         TestDefaults.clear()
         try await super.tearDown()
     }
 
-    /// Polls until the condition holds or the timeout passes.
+    private func makeCoordinator(
+        requestPermissions: @escaping @Sendable () async -> Bool = { true }
+    ) -> SessionCoordinator {
+        SessionCoordinator(
+            engine: engine,
+            requestPermissions: requestPermissions,
+            scorer: scorer,
+            saver: saver,
+            haptics: haptics,
+            proximity: proximity
+        )
+    }
+
+    /// Polls until the condition holds, failing the test if it never does.
+    /// Only for effects of the engine's event stream, which has no handle to await.
     private func waitUntil(
         timeout: TimeInterval = 2.0,
+        file: StaticString = #filePath,
+        line: UInt = #line,
         _ condition: @MainActor () async -> Bool
     ) async {
         let deadline = Date().addingTimeInterval(timeout)
-        while await !condition() && Date() < deadline {
-            try? await Task.sleep(for: .milliseconds(20))
+        while await !condition() {
+            guard Date() < deadline else {
+                XCTFail("Condition not met within \(timeout)s", file: file, line: line)
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(10))
         }
     }
 
@@ -63,7 +95,7 @@ final class SessionCoordinatorTests: XCTestCase {
     }
 
     func testBeginSession_withoutPermissions_staysIdle() async {
-        let denied = SessionCoordinator(engine: FakeCaptureEngine(), requestPermissions: { false })
+        let denied = makeCoordinator(requestPermissions: { false })
         await denied.start()
 
         denied.beginSession()
@@ -103,7 +135,6 @@ final class SessionCoordinatorTests: XCTestCase {
         await waitUntil { self.engine.startCallCount == 1 }
 
         await sut.endSession()
-        await waitUntil { self.sut.phase == .idle }
 
         XCTAssertEqual(sut.phase, .idle)
         XCTAssertTrue(sut.sessionPreviews.isEmpty)
@@ -168,22 +199,61 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(sut.phase, .idle)
     }
 
-    func testTumbleAnimationComplete_savesAndReturnsToIdle() async {
+    func testTumbleAnimationComplete_savesCuratedPhotosAndReturnsToIdle() async throws {
+        await scorer.setScores([0.9, 0.1])
+        let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
+        let reject = FakeCaptureEngine.makeAsset(fileData: Data([0x02]))
+
         sut.beginSession()
         await waitUntil { self.engine.startCallCount == 1 }
-        engine.emitCapturedPhoto()
-        await waitForStoredPhotos(1)
+        engine.emit(.captured(keeper))
+        engine.emit(.captured(reject))
+        await waitForStoredPhotos(2)
         await sut.endSession()
         XCTAssertEqual(sut.phase, .celebrating)
 
         sut.tumbleAnimationComplete()
         XCTAssertEqual(sut.phase, .saving)
 
-        // Saving runs scoring + a photo-library write that fails without
-        // authorization in the test host; either way it must land on idle.
-        await waitUntil(timeout: 10) { self.sut.phase == .idle }
+        let saveTask = try XCTUnwrap(sut.saveTask)
+        await saveTask.value
+
         XCTAssertEqual(sut.phase, .idle)
         XCTAssertTrue(sut.sessionPreviews.isEmpty)
+        let batches = await saver.savedBatches
+        XCTAssertEqual(batches.count, 1)
+        XCTAssertEqual(batches.first?.map(\.data), [keeper.fileData])
+    }
+
+    // MARK: - Heartbeat
+
+    func testHeartbeat_beatsOnContactAndBeforeEachCapture() async {
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+
+        XCTAssertEqual(haptics.prepareCount, 1)
+        XCTAssertEqual(haptics.beatCount, 1, "One beat at contact, before any capture")
+
+        engine.emit(.willCapture)
+        engine.emit(.willCapture)
+        await waitUntil { self.haptics.beatCount == 3 }
+
+        await sut.endSession()
+        XCTAssertEqual(haptics.endCount, 1)
+    }
+
+    // MARK: - Proximity
+
+    func testProximity_coveringBeginsSessionAndClearingEndsIt() async {
+        XCTAssertEqual(proximity.startCount, 1)
+
+        proximity.send(covered: true)
+        await waitUntil { self.engine.startCallCount == 1 }
+        XCTAssertEqual(sut.phase, .capturing)
+
+        proximity.send(covered: false)
+        await waitUntil { self.sut.phase == .idle }
+        XCTAssertEqual(engine.stopCallCount, 1)
     }
 
     // MARK: - Prewarm
@@ -195,7 +265,6 @@ final class SessionCoordinatorTests: XCTestCase {
         await waitUntil { self.engine.startCallCount == 1 }
         await sut.endSession()  // no photos -> straight to idle
 
-        await waitUntil { self.engine.prewarmCallCount > prewarmsAfterStart }
         XCTAssertGreaterThan(engine.prewarmCallCount, prewarmsAfterStart)
     }
 }

@@ -3,7 +3,14 @@
 import UIKit
 
 @MainActor
-final class ProximityMonitor {
+protocol ProximityEventSource: AnyObject {
+    /// Emits true when the sensor is covered, false when cleared.
+    var events: AsyncStream<Bool> { get }
+    func start()
+}
+
+@MainActor
+final class ProximityMonitor: ProximityEventSource {
     /// Emits true when the sensor is covered, false when cleared. Debounced 50ms.
     let events: AsyncStream<Bool>
 

@@ -22,20 +22,29 @@ final class SessionCoordinator {
 
     private let engine: any CaptureEngineProtocol
     private let requestPermissions: @Sendable () async -> Bool
-    private let scorer = PhotoScorer()
-    private let saver = LibrarySaver()
-    private let haptics = HapticHeartbeatService()
-    private let proximity = ProximityMonitor()
+    private let scorer: any PhotoScoring
+    private let saver: any PhotoSaving
+    private let haptics: any HeartbeatPlaying
+    private let proximity: any ProximityEventSource
 
     @ObservationIgnored private var eventTask: Task<Void, Never>?
+    @ObservationIgnored private(set) var saveTask: Task<Void, Never>?
     @ObservationIgnored private var consecutiveDarkFrames = 0
 
     init(
         engine: any CaptureEngineProtocol = CaptureEngine(),
-        requestPermissions: @escaping @Sendable () async -> Bool = SystemPermissions.request
+        requestPermissions: @escaping @Sendable () async -> Bool = SystemPermissions.request,
+        scorer: any PhotoScoring = PhotoScorer(),
+        saver: any PhotoSaving = LibrarySaver(),
+        haptics: any HeartbeatPlaying = HapticHeartbeatService(),
+        proximity: any ProximityEventSource = ProximityMonitor()
     ) {
         self.engine = engine
         self.requestPermissions = requestPermissions
+        self.scorer = scorer
+        self.saver = saver
+        self.haptics = haptics
+        self.proximity = proximity
     }
 
     // MARK: - Lifecycle
@@ -101,7 +110,7 @@ final class SessionCoordinator {
     func tumbleAnimationComplete() {
         guard phase == .celebrating else { return }
         phase = .saving
-        Task {
+        saveTask = Task {
             await saveBestPhotos()
             await resetToIdle()
         }

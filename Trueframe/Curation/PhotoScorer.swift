@@ -3,7 +3,11 @@
 import UIKit
 import Vision
 
-struct PhotoScorer: Sendable {
+protocol PhotoScoring: Sendable {
+    func scores(for images: [UIImage?]) async -> [Float]
+}
+
+struct PhotoScorer: PhotoScoring {
     /// Returns a 0-1 aesthetics score per image, in order. Images that can't
     /// be scored get `CurationPolicy.unscorableScore`. Requests run concurrently.
     func scores(for images: [UIImage?]) async -> [Float] {

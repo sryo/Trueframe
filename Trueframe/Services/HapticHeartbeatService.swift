@@ -4,7 +4,14 @@ import CoreHaptics
 import UIKit
 
 @MainActor
-final class HapticHeartbeatService {
+protocol HeartbeatPlaying: AnyObject {
+    func prepareForSession() async
+    func playHeartbeat()
+    func endSession()
+}
+
+@MainActor
+final class HapticHeartbeatService: HeartbeatPlaying {
     private var engine: CHHapticEngine?
     private var player: CHHapticPatternPlayer?
     private var isReady = false

@@ -2,7 +2,11 @@
 
 import Photos
 
-struct LibrarySaver: Sendable {
+protocol PhotoSaving: Sendable {
+    func save(_ items: [LibrarySaver.Item]) async -> Int
+}
+
+struct LibrarySaver: PhotoSaving {
     struct Item: Sendable {
         let data: Data
         let isProxy: Bool
