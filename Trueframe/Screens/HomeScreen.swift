@@ -85,37 +85,60 @@ struct HomeScreen: View {
     }
 }
 
+private struct HeartPose {
+    var opacity: Double
+    var scale: Double
+}
+
 private struct HeartbeatSymbol: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var beat = 0
-
-    private static let restingBeatInterval = 60.0 / 52  // a resting heart
+    @State private var keyframes = HeartbeatKeyframes(isNearFullMoon: Date.now.isNearFullMoon)
 
     var body: some View {
-        // The heart waxes with the moon
-        let (dim, bright) = Date.now.isNearFullMoon ? (0.5, 0.9) : (0.30, 0.6)
-
-        PhaseAnimator([false, true], trigger: beat) { isBright in
+        KeyframeAnimator(
+            initialValue: HeartPose(opacity: keyframes.restingOpacity, scale: keyframes.restingScale),
+            trigger: beat
+        ) { pose in
             Text("♥")
                 .font(.system(size: 8))
-                .foregroundStyle(.white.opacity(isBright ? bright : dim))
-        } animation: { phase in
-            phase ? .easeIn(duration: 0.05) : .easeOut(duration: 0.85)
+                .foregroundStyle(.white.opacity(reduceMotion ? keyframes.restingOpacity : pose.opacity))
+                .scaleEffect(reduceMotion ? 1 : pose.scale)
+        } keyframes: { _ in
+            KeyframeTrack(\.opacity) {
+                for step in keyframes.steps {
+                    LinearKeyframe(step.opacity, duration: step.duration, timingCurve: step.easesOut ? .easeOut : .linear)
+                }
+            }
+            KeyframeTrack(\.scale) {
+                for step in keyframes.steps {
+                    SpringKeyframe(step.scale, duration: step.duration, spring: .snappy)
+                }
+            }
         }
-        .task {
+        .accessibilityHidden(true)
+        .anchorPreference(key: HeartAnchorKey.self, value: .bounds) { $0 }
+        .task(id: reduceMotion) {
             guard !reduceMotion else { return }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(Self.restingBeatInterval))
+                try? await Task.sleep(for: Motion.restingBeatInterval)
                 guard !Task.isCancelled else { return }
                 // Once in a long while, a real heart skips
                 if Int.random(in: 0..<500) == 0 {
                     try? await Task.sleep(for: .seconds(1.2))
-                    beat += 1
+                    pulse()
                     try? await Task.sleep(for: .seconds(0.25))
                 }
-                beat += 1
+                pulse()
             }
         }
+    }
+
+    // The moon can turn full while the app stays open, so check it each beat.
+    private func pulse() {
+        let current = HeartbeatKeyframes(isNearFullMoon: Date.now.isNearFullMoon)
+        if current != keyframes { keyframes = current }
+        beat += 1
     }
 }
 
