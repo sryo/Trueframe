@@ -3,8 +3,6 @@
 import AVFoundation
 import SwiftUI
 
-// MARK: - Zoom Label
-
 /// The telephoto lens's zoom factor relative to the wide lens, from their horizontal fields of view.
 func zoomLabel(teleFOV: Double?, wideFOV: Double?) -> String {
     guard let teleFOV, teleFOV > 0 else { return "2x" }
@@ -30,8 +28,6 @@ private enum TelephotoDiscovery {
     }()
 }
 
-// MARK: - Lens Style
-
 enum LensStyle {
     static func scale(isSelected: Bool) -> CGFloat {
         isSelected ? 1.0 : 0.86
@@ -41,8 +37,6 @@ enum LensStyle {
         isSelected ? 0.9 : 0.3
     }
 }
-
-// MARK: - Camera Toggle View
 
 struct CameraToggleView: View {
     @Bindable var settings: CameraSelectionSettings
@@ -94,8 +88,6 @@ struct CameraToggleView: View {
     }
 }
 
-// MARK: - Camera Lens Button
-
 private struct CameraLensButton: View {
     let isSelected: Bool
     let label: String
@@ -126,8 +118,6 @@ private struct CameraLensButton: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
-
-// MARK: - Flash Button
 
 enum FlashStyle {
     static let minimumHitSize: CGFloat = 44
@@ -179,8 +169,6 @@ private struct FlashButton: View {
     }
 }
 
-// MARK: - Press Style
-
 private struct PressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         PressedLabel(label: configuration.label, isPressed: configuration.isPressed)
@@ -200,8 +188,6 @@ private struct PressedLabel<Label: View>: View {
             .animation(reduceMotion ? Motion.fade : Motion.press, value: isPressed)
     }
 }
-
-// MARK: - Preview
 
 #Preview {
     ZStack {
