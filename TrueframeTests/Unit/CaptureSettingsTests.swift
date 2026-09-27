@@ -65,6 +65,50 @@ final class CaptureSettingsTests: XCTestCase {
         XCTAssertEqual(UserDefaults.standard.object(forKey: "capture.interval") as? Double, before)
     }
 
+    // MARK: - Sanitizing
+
+    func testInit_storedOffGridValue_snapsToNearestOption() {
+        defaults.set(2.4, forKey: "capture.interval")
+
+        XCTAssertEqual(CaptureSettings(defaults: defaults).captureInterval, 2.0)
+    }
+
+    func testInit_storedValueBeyondRange_snapsToEnd() {
+        defaults.set(60.0, forKey: "capture.interval")
+
+        XCTAssertEqual(CaptureSettings(defaults: defaults).captureInterval, 5.0)
+    }
+
+    func testInit_storedNonPositive_fallsBackToOneSecond() {
+        defaults.set(-3.0, forKey: "capture.interval")
+        XCTAssertEqual(CaptureSettings(defaults: defaults).captureInterval, 1.0)
+
+        defaults.set(0.0, forKey: "capture.interval")
+        XCTAssertEqual(CaptureSettings(defaults: defaults).captureInterval, 1.0)
+    }
+
+    func testInit_storedNonFinite_fallsBackToOneSecond() {
+        defaults.set(Double.nan, forKey: "capture.interval")
+        XCTAssertEqual(CaptureSettings(defaults: defaults).captureInterval, 1.0)
+
+        defaults.set(Double.infinity, forKey: "capture.interval")
+        XCTAssertEqual(CaptureSettings(defaults: defaults).captureInterval, 1.0)
+    }
+
+    func testSet_offGridValue_snapsAndPersistsTheOption() {
+        sut.captureInterval = 0.3
+
+        XCTAssertEqual(sut.captureInterval, 0.25)
+        XCTAssertEqual(defaults.double(forKey: "capture.interval"), 0.25)
+    }
+
+    func testSet_nonFinite_fallsBackToOneSecond() {
+        sut.captureInterval = 5.0
+        sut.captureInterval = .nan
+
+        XCTAssertEqual(sut.captureInterval, 1.0)
+    }
+
     // MARK: - Formatting
 
     func testFormatInterval_options() {
