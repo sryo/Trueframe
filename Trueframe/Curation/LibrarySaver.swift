@@ -13,11 +13,22 @@ struct LibrarySaver: PhotoSaving {
         let capturedAt: Date
     }
 
+    private let authorizationStatus: @Sendable () -> PHAuthorizationStatus
+
+    init(authorizationStatus: @escaping @Sendable () -> PHAuthorizationStatus = {
+        PHPhotoLibrary.authorizationStatus(for: .addOnly)
+    }) {
+        self.authorizationStatus = authorizationStatus
+    }
+
     /// Saves all items in a single photo-library transaction, returning how
     /// many succeeded. Proxy items are added as deferred photo proxies; Photos
     /// finishes full-quality processing in the background after this app is done.
     func save(_ items: [Item]) async -> Int {
         guard !items.isEmpty else { return 0 }
+        // Without access, performChanges waits on a prompt nobody may answer
+        let status = authorizationStatus()
+        guard status == .authorized || status == .limited else { return 0 }
 
         do {
             try await PHPhotoLibrary.shared().performChanges {
