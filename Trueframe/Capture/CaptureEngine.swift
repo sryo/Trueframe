@@ -82,7 +82,7 @@ actor CaptureEngine: CaptureEngineProtocol {
         isRunning = false
         cadenceTask?.cancel()
         cadenceTask = nil
-        await motion.stop()
+        motion.stop()
 
         // Drain in-flight captures so their events reach the stream, bounded at 2s.
         for _ in 0..<80 where !inFlightDelegates.isEmpty {
@@ -183,7 +183,7 @@ actor CaptureEngine: CaptureEngineProtocol {
             return
         }
         if !session.isRunning { session.startRunning() }
-        await motion.start()
+        motion.start()
 
         while isRunning && !Task.isCancelled {
             await waitUntilReadyForCapture()
