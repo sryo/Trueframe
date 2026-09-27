@@ -7,6 +7,8 @@ protocol ProximityEventSource: AnyObject {
     /// Emits true when the sensor is covered, false when cleared.
     var events: AsyncStream<Bool> { get }
     func start()
+    /// Final: the events stream finishes and the source cannot start again.
+    func stop()
 }
 
 @MainActor
@@ -17,13 +19,14 @@ final class ProximityMonitor: ProximityEventSource {
     private let continuation: AsyncStream<Bool>.Continuation
     private var observer: NSObjectProtocol?
     private var debounceTask: Task<Void, Never>?
+    private var isStopped = false
 
     init() {
         (events, continuation) = AsyncStream.makeStream(of: Bool.self)
     }
 
     func start() {
-        guard observer == nil else { return }
+        guard observer == nil, !isStopped else { return }
         UIDevice.current.isProximityMonitoringEnabled = true
 
         observer = NotificationCenter.default.addObserver(
@@ -35,6 +38,18 @@ final class ProximityMonitor: ProximityEventSource {
                 self?.scheduleEmit()
             }
         }
+    }
+
+    func stop() {
+        isStopped = true
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        observer = nil
+        debounceTask?.cancel()
+        debounceTask = nil
+        UIDevice.current.isProximityMonitoringEnabled = false
+        continuation.finish()
     }
 
     private func scheduleEmit() {

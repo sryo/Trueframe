@@ -7,6 +7,7 @@ final class FakeProximitySource: ProximityEventSource {
     let events: AsyncStream<Bool>
     private let continuation: AsyncStream<Bool>.Continuation
     private(set) var startCount = 0
+    private(set) var stopCount = 0
 
     init() {
         (events, continuation) = AsyncStream.makeStream(of: Bool.self)
@@ -14,6 +15,10 @@ final class FakeProximitySource: ProximityEventSource {
 
     func start() {
         startCount += 1
+    }
+
+    func stop() {
+        stopCount += 1
     }
 
     func send(covered: Bool) {

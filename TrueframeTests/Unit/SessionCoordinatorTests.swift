@@ -335,6 +335,33 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(engine.stopCallCount, 1)
     }
 
+    func testStart_twice_consumesProximityOnce() async {
+        await sut.start()
+
+        XCTAssertEqual(proximity.startCount, 1)
+    }
+
+    func testStart_doesNotKeepCoordinatorAlive() async {
+        proximity = FakeProximitySource()
+        var coordinator: SessionCoordinator? = makeCoordinator()
+        weak let released = coordinator
+        await coordinator?.start()
+
+        coordinator = nil
+
+        XCTAssertNil(released)
+    }
+
+    func testStop_stopsProximityAndIgnoresLaterCovers() async {
+        sut.stop()
+        proximity.send(covered: true)
+        try? await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertEqual(proximity.stopCount, 1)
+        XCTAssertEqual(sut.phase, .idle)
+        XCTAssertEqual(engine.startCallCount, 0)
+    }
+
     // MARK: - Prewarm
 
     func testReturnToIdle_prewarmsEngine() async {

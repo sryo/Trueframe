@@ -27,6 +27,7 @@ final class SessionCoordinator {
     private let haptics: any HeartbeatPlaying
     private let proximity: any ProximityEventSource
 
+    @ObservationIgnored private var proximityTask: Task<Void, Never>?
     @ObservationIgnored private var eventTask: Task<Void, Never>?
     @ObservationIgnored private(set) var saveTask: Task<Void, Never>?
     @ObservationIgnored private var consecutiveDarkFrames = 0
@@ -53,11 +54,12 @@ final class SessionCoordinator {
         hasPermissions = await requestPermissions()
         guard hasPermissions else { return }
 
-        proximity.start()
-        await engine.prewarm(currentConfiguration())
+        guard proximityTask == nil else { return }
 
-        Task {
-            for await covered in proximity.events {
+        proximity.start()
+        proximityTask = Task { [weak self, events = proximity.events] in
+            for await covered in events {
+                guard let self else { return }
                 if covered {
                     beginSession()
                 } else {
@@ -65,6 +67,13 @@ final class SessionCoordinator {
                 }
             }
         }
+        await engine.prewarm(currentConfiguration())
+    }
+
+    func stop() {
+        proximityTask?.cancel()
+        proximityTask = nil
+        proximity.stop()
     }
 
     // MARK: - Session Flow
