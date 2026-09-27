@@ -218,8 +218,9 @@ actor CaptureEngine: CaptureEngineProtocol {
             }
         }
 
+        guard let continuation else { return }
         let settings = makePhotoSettings(configuration)
-        let delegate = PhotoCaptureDelegate(engine: self, captureID: settings.uniqueID)
+        let delegate = PhotoCaptureDelegate(engine: self, events: continuation, captureID: settings.uniqueID)
         inFlightDelegates[settings.uniqueID] = delegate
         photoOutput.capturePhoto(with: settings, delegate: delegate)
     }
@@ -254,14 +255,6 @@ actor CaptureEngine: CaptureEngineProtocol {
 
     // MARK: - Delegate Callbacks
 
-    fileprivate func handleWillCapture() {
-        continuation?.yield(.willCapture)
-    }
-
-    fileprivate func handleCaptured(_ asset: CapturedAsset) {
-        continuation?.yield(.captured(asset))
-    }
-
     fileprivate func handleFinished(captureID: Int64) {
         inFlightDelegates[captureID] = nil
     }
@@ -272,18 +265,24 @@ actor CaptureEngine: CaptureEngineProtocol {
 // One short-lived delegate per shot; the engine retains it until
 // didFinishCaptureFor. All stored state is immutable, so crossing from the
 // engine actor to AVFoundation's callback queue is safe.
+//
+// Events are yielded straight from the callbacks, which AVFoundation delivers
+// in order and always ends with didFinishCaptureFor. Only the in-flight
+// bookkeeping hops to the engine, so by the time stop() sees a capture
+// finished, its photo is already in the stream.
 private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
     private let engine: CaptureEngine
+    private let events: AsyncStream<CaptureEvent>.Continuation
     private let captureID: Int64
 
-    init(engine: CaptureEngine, captureID: Int64) {
+    init(engine: CaptureEngine, events: AsyncStream<CaptureEvent>.Continuation, captureID: Int64) {
         self.engine = engine
+        self.events = events
         self.captureID = captureID
     }
 
     func photoOutput(_ output: AVCapturePhotoOutput, willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
-        let engine = engine
-        Task { await engine.handleWillCapture() }
+        events.yield(.willCapture)
     }
 
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishCapturingDeferredPhotoProxy deferredPhotoProxy: AVCaptureDeferredPhotoProxy?, error: Error?) {
@@ -314,8 +313,7 @@ private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegat
             isProxy: isProxy,
             capturedAt: Date()
         )
-        let engine = engine
-        Task { await engine.handleCaptured(asset) }
+        events.yield(.captured(asset))
     }
 }
 
