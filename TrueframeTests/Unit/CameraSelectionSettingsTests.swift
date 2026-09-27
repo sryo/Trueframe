@@ -3,80 +3,70 @@
 import XCTest
 @testable import Trueframe
 
-/// Tests for CameraSelectionSettings functionality.
 @MainActor
 final class CameraSelectionSettingsTests: XCTestCase {
 
-    var sut: CameraSelectionSettings!
+    private var suiteName: String!
+    private var defaults: UserDefaults!
+    private var sut: CameraSelectionSettings!
 
     override func setUp() async throws {
         try await super.setUp()
-        TestDefaults.clear()
-        sut = CameraSelectionSettings()
+        suiteName = UUID().uuidString
+        defaults = UserDefaults(suiteName: suiteName)
+        sut = CameraSelectionSettings(defaults: defaults)
     }
 
     override func tearDown() async throws {
+        defaults.removePersistentDomain(forName: suiteName)
         sut = nil
-        TestDefaults.clear()
+        defaults = nil
         try await super.tearDown()
     }
 
-    // MARK: - Default Values Tests
+    // MARK: - Defaults
 
-    func testDefaultValues_wideSelected() {
-        XCTAssertEqual(sut.selectedCamera, .wide, "Wide should be selected by default")
+    func testDefault_wideSelected() {
+        XCTAssertEqual(sut.selectedCamera, .wide)
     }
 
-    func testDefaultValues_flashDisabled() {
-        XCTAssertFalse(sut.flashEnabled, "Flash should be disabled by default")
+    func testDefault_flashDisabled() {
+        XCTAssertFalse(sut.flashEnabled)
     }
 
-    // MARK: - Mutually Exclusive Selection Tests
-
-    func testSelect_switchesToNewCamera() {
-        sut.select(.ultrawide)
-
-        XCTAssertEqual(sut.selectedCamera, .ultrawide)
-    }
+    // MARK: - Selection
 
     func testSelect_replacesPreviousSelection() {
-        sut.select(.wide)
+        sut.select(.ultrawide)
         sut.select(.telephoto)
 
-        XCTAssertEqual(sut.selectedCamera, .telephoto, "Selection is mutually exclusive")
+        XCTAssertEqual(sut.selectedCamera, .telephoto)
     }
 
-    // MARK: - Persistence Tests
+    // MARK: - Persistence
 
     func testPersistence_selectedCamera() {
         sut.select(.telephoto)
 
-        // Create new instance to verify persistence
-        let newInstance = CameraSelectionSettings()
-
-        XCTAssertEqual(newInstance.selectedCamera, .telephoto, "Selected camera should persist")
+        XCTAssertEqual(CameraSelectionSettings(defaults: defaults).selectedCamera, .telephoto)
     }
 
     func testPersistence_flashEnabled() {
         sut.flashEnabled = true
 
-        let newInstance = CameraSelectionSettings()
-
-        XCTAssertTrue(newInstance.flashEnabled, "Flash setting should persist")
+        XCTAssertTrue(CameraSelectionSettings(defaults: defaults).flashEnabled)
     }
 
-    // MARK: - BackCameraType Tests
+    func testInit_unknownStoredCamera_fallsBackToWide() {
+        defaults.set("fisheye", forKey: "camera.selected")
 
-    func testBackCameraType_allCases() {
-        let allCases = BackCameraType.allCases
-
-        XCTAssertEqual(allCases.count, 3)
-        XCTAssertTrue(allCases.contains(.wide))
-        XCTAssertTrue(allCases.contains(.ultrawide))
-        XCTAssertTrue(allCases.contains(.telephoto))
+        XCTAssertEqual(CameraSelectionSettings(defaults: defaults).selectedCamera, .wide)
     }
+
+    // MARK: - BackCameraType
 
     func testBackCameraType_rawValueRoundTrip() {
+        XCTAssertEqual(BackCameraType.allCases, [.wide, .ultrawide, .telephoto])
         for camera in BackCameraType.allCases {
             XCTAssertEqual(BackCameraType(rawValue: camera.rawValue), camera)
         }

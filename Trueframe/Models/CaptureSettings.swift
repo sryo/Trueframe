@@ -10,12 +10,14 @@ final class CaptureSettings {
         static let captureInterval = "capture.interval"
     }
 
+    @ObservationIgnored private let defaults: UserDefaults
+
     var captureInterval: Double {
-        didSet { UserDefaults.standard.set(captureInterval, forKey: Keys.captureInterval) }
+        didSet { defaults.set(captureInterval, forKey: Keys.captureInterval) }
     }
 
-    init() {
-        let defaults = UserDefaults.standard
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         self.captureInterval = defaults.object(forKey: Keys.captureInterval) as? Double ?? 1.0
     }
 

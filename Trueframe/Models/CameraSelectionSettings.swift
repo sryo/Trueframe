@@ -17,17 +17,18 @@ final class CameraSelectionSettings {
         static let flash = "camera.flash"
     }
 
+    @ObservationIgnored private let defaults: UserDefaults
+
     var selectedCamera: BackCameraType {
-        didSet { UserDefaults.standard.set(selectedCamera.rawValue, forKey: Keys.selectedCamera) }
+        didSet { defaults.set(selectedCamera.rawValue, forKey: Keys.selectedCamera) }
     }
 
     var flashEnabled: Bool {
-        didSet { UserDefaults.standard.set(flashEnabled, forKey: Keys.flash) }
+        didSet { defaults.set(flashEnabled, forKey: Keys.flash) }
     }
 
-    init() {
-        let defaults = UserDefaults.standard
-        // Default: wide camera selected, flash off
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         if let rawValue = defaults.string(forKey: Keys.selectedCamera),
            let camera = BackCameraType(rawValue: rawValue) {
             self.selectedCamera = camera
@@ -37,7 +38,6 @@ final class CameraSelectionSettings {
         self.flashEnabled = defaults.object(forKey: Keys.flash) as? Bool ?? false
     }
 
-    /// Select a camera (mutually exclusive - only one active at a time)
     func select(_ camera: BackCameraType) {
         selectedCamera = camera
     }
