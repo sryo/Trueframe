@@ -10,46 +10,100 @@ protocol HeartbeatPlaying: AnyObject {
     func endSession()
 }
 
+/// One session's haptic engine, loaded with the heartbeat pattern once started.
+@MainActor
+protocol HeartbeatEngine: AnyObject {
+    func start() async throws
+    func play() throws
+    func stop()
+}
+
 @MainActor
 final class HapticHeartbeatService: HeartbeatPlaying {
-    private var engine: CHHapticEngine?
-    private var player: CHHapticPatternPlayer?
-    private var isReady = false
+    private let makeEngine: @MainActor () -> (any HeartbeatEngine)?
+    private var engine: (any HeartbeatEngine)?
+    private var sessionGeneration = 0
+
+    /// makeEngine returns nil on hardware without haptics.
+    init(makeEngine: @escaping @MainActor () -> (any HeartbeatEngine)? = CoreHapticsHeartbeat.make) {
+        self.makeEngine = makeEngine
+    }
 
     func prepareForSession() async {
-        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
-
+        let generation = sessionGeneration
+        guard let newEngine = makeEngine() else { return }
         do {
-            let newEngine = try CHHapticEngine()
-            newEngine.playsHapticsOnly = true
-            newEngine.isAutoShutdownEnabled = true
-
-            newEngine.resetHandler = { [weak self] in
-                Task { @MainActor in self?.restart() }
-            }
-
             try await newEngine.start()
-            self.engine = newEngine
-            self.player = try newEngine.makePlayer(with: createHeartbeatPattern())
-            self.isReady = true
+            // The session may have ended while the engine was starting
+            guard generation == sessionGeneration else {
+                newEngine.stop()
+                return
+            }
+            engine = newEngine
         } catch {
             print("[HapticHeartbeatService] Failed to prepare: \(error)")
         }
     }
 
     func playHeartbeat() {
-        guard isReady else { return }
-        try? player?.start(atTime: CHHapticTimeImmediate)
+        try? engine?.play()
     }
 
     func endSession() {
-        isReady = false
-        player = nil
+        sessionGeneration += 1
         engine?.stop()
         engine = nil
     }
+}
 
-    private func createHeartbeatPattern() throws -> CHHapticPattern {
+@MainActor
+final class CoreHapticsHeartbeat: HeartbeatEngine {
+    private let engine: CHHapticEngine
+    private var player: CHHapticPatternPlayer?
+    private var isStopped = false
+
+    static func make() -> (any HeartbeatEngine)? {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return nil }
+        do {
+            return try CoreHapticsHeartbeat()
+        } catch {
+            print("[CoreHapticsHeartbeat] Failed to create engine: \(error)")
+            return nil
+        }
+    }
+
+    private init() throws {
+        engine = try CHHapticEngine()
+        engine.playsHapticsOnly = true
+        engine.isAutoShutdownEnabled = true
+        engine.resetHandler = { [weak self] in
+            Task { @MainActor in self?.restart() }
+        }
+    }
+
+    func start() async throws {
+        try await engine.start()
+        player = try engine.makePlayer(with: Self.heartbeatPattern())
+    }
+
+    func play() throws {
+        try player?.start(atTime: CHHapticTimeImmediate)
+    }
+
+    func stop() {
+        isStopped = true
+        player = nil
+        engine.stop()
+    }
+
+    // After a reset the engine must be started again and its players recreated
+    private func restart() {
+        guard !isStopped else { return }
+        player = nil
+        Task { try? await start() }
+    }
+
+    private static func heartbeatPattern() throws -> CHHapticPattern {
         // Simple double-tap heartbeat: lub-dub
         let lub = CHHapticEvent(
             eventType: .hapticTransient,
@@ -70,10 +124,5 @@ final class HapticHeartbeatService: HeartbeatPlaying {
         )
 
         return try CHHapticPattern(events: [lub, dub], parameters: [])
-    }
-
-    private func restart() {
-        isReady = false
-        Task { await prepareForSession() }
     }
 }
