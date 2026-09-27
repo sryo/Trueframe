@@ -13,6 +13,8 @@ struct TrueframeApp: App {
                 .preferredColorScheme(.dark)
                 .persistentSystemOverlays(.hidden)
                 .task {
+                    // The unit test host must never raise permission prompts
+                    guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
                     await coordinator.start()
                 }
         }
