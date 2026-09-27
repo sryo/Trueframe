@@ -38,10 +38,6 @@ final class CaptureSettings {
     }
 
     static func formatInterval(_ interval: Double) -> String {
-        if interval < 1.0 {
-            return String(format: "%.2gs", interval)
-        } else {
-            return "\(Int(interval))s"
-        }
+        String(format: "%gs", interval)
     }
 }

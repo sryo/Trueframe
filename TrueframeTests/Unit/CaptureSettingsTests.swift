@@ -120,4 +120,9 @@ final class CaptureSettingsTests: XCTestCase {
         XCTAssertEqual(CaptureSettings.formatInterval(3.0), "3s")
         XCTAssertEqual(CaptureSettings.formatInterval(10.0), "10s")
     }
+
+    func testFormatInterval_keepsFractionAboveOneSecond() {
+        XCTAssertEqual(CaptureSettings.formatInterval(1.5), "1.5s")
+        XCTAssertEqual(CaptureSettings.formatInterval(2.25), "2.25s")
+    }
 }
