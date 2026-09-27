@@ -1,5 +1,3 @@
-// Idle state before capture begins.
-
 import SwiftUI
 
 struct HomeScreen: View {
@@ -13,8 +11,6 @@ struct HomeScreen: View {
     private var sessionHoldsHeart: Bool {
         coordinator.isCapturing || coordinator.showingTumbleAnimation
     }
-
-    // MARK: - Visibility Animation Helpers
 
     private func hideContent() {
         withAnimation(Motion.dismiss) {
@@ -45,8 +41,6 @@ struct HomeScreen: View {
     private func state(_ part: HomeReveal.Part) -> HomeReveal.State {
         reveal[part] ?? .waiting
     }
-
-    // MARK: - Body
 
     var body: some View {
         ZStack {
