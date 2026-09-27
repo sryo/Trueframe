@@ -1,5 +1,3 @@
-// Owns the capture session lifecycle and coordinates all services.
-
 import AVFoundation
 import Observation
 import Photos
@@ -49,8 +47,6 @@ final class SessionCoordinator {
         self.proximity = proximity
     }
 
-    // MARK: - Lifecycle
-
     func start() async {
         hasPermissions = await requestPermissions()
         guard hasPermissions else { return }
@@ -77,8 +73,6 @@ final class SessionCoordinator {
         proximityTask = nil
         proximity.stop()
     }
-
-    // MARK: - Session Flow
 
     func beginSession() {
         guard phase == .idle, hasPermissions, FileManager.default.hasAdequateSpace else { return }
@@ -110,8 +104,6 @@ final class SessionCoordinator {
             await resetToIdle()
         }
     }
-
-    // MARK: - Session Run
 
     // Everything from first beat to teardown runs in this one task, so the
     // drain after stop() is consumed and teardown happens exactly once.
@@ -151,8 +143,6 @@ final class SessionCoordinator {
         await engine.stop()
     }
 
-    // MARK: - Event Handling
-
     private func handle(_ event: CaptureEvent) async {
         switch event {
         case .willCapture:
@@ -184,8 +174,6 @@ final class SessionCoordinator {
             await stopCapturing()
         }
     }
-
-    // MARK: - Saving
 
     private func curatedItems() async -> [LibrarySaver.Item] {
         let entries = await store.allEntries()
@@ -219,8 +207,6 @@ final class SessionCoordinator {
         await engine.prewarm(currentConfiguration())
     }
 
-    // MARK: - Helpers
-
     private func currentConfiguration() -> CaptureConfiguration {
         CaptureConfiguration(
             lens: cameraSelectionSettings.selectedCamera,
@@ -229,8 +215,6 @@ final class SessionCoordinator {
         )
     }
 }
-
-// MARK: - System Permissions
 
 enum SystemPermissions {
     /// Camera capture plus add-only photo library access.

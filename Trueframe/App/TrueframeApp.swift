@@ -1,5 +1,3 @@
-// App entry point.
-
 import SwiftUI
 
 @main
