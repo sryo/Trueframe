@@ -20,4 +20,23 @@ final class ProximityMonitorTests: XCTestCase {
         await fulfillment(of: [finished], timeout: 1)
         consumer.cancel()
     }
+
+    func testStartAfterStop_listensOnAFreshStream() async {
+        let monitor = ProximityMonitor()
+        monitor.start()
+        monitor.stop()
+
+        monitor.start()
+        let finishedEarly = expectation(description: "restarted events finish before stop")
+        finishedEarly.isInverted = true
+        let events = monitor.events
+        let consumer = Task {
+            for await _ in events {}
+            finishedEarly.fulfill()
+        }
+        await fulfillment(of: [finishedEarly], timeout: 0.2)
+
+        monitor.stop()
+        await consumer.value
+    }
 }
