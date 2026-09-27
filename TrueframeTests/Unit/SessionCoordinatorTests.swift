@@ -280,6 +280,39 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(engine.stopCallCount, 1)
     }
 
+    // MARK: - Capture Count
+
+    func testCapturedCount_countsKeptPhotosButNotDarkFrames() async {
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+        XCTAssertEqual(sut.capturedCount, 0)
+
+        engine.emitCapturedPhoto()
+        engine.emitCapturedPhoto(brightness: 0.0)
+        engine.emitCapturedPhoto()
+        await waitForStoredPhotos(2)
+        await waitUntil { self.sut.capturedCount >= 2 }
+        try? await Task.sleep(for: .milliseconds(50))
+
+        XCTAssertEqual(sut.capturedCount, 2)
+    }
+
+    func testCapturedCount_resetsWhenTheNextSessionBegins() async {
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+        engine.emitCapturedPhoto()
+        await waitForStoredPhotos(1)
+        await sut.endSession()
+        sut.tumbleAnimationComplete()
+        await sut.saveTask?.value
+        XCTAssertEqual(sut.capturedCount, 1)
+
+        sut.beginSession()
+
+        XCTAssertEqual(sut.capturedCount, 0)
+        await sut.endSession()
+    }
+
     // MARK: - Tumble Completion
 
     func testTumbleAnimationComplete_whenNotCelebrating_isIgnored() {

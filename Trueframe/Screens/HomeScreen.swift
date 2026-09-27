@@ -6,6 +6,12 @@ struct HomeScreen: View {
     @Environment(SessionCoordinator.self) private var coordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var reveal: [HomeReveal.Part: HomeReveal.State] = [:]
+    /// After the first session the heart never leaves its spot; home comes and goes around it.
+    @State private var heartStaysPut = false
+
+    private var sessionHoldsHeart: Bool {
+        coordinator.isCapturing || coordinator.showingTumbleAnimation
+    }
 
     // MARK: - Visibility Animation Helpers
 
@@ -61,16 +67,19 @@ struct HomeScreen: View {
                 .accessibilityLabel("Trueframe home")
                 .accessibilityHint("Hold phone to your heart to start capturing photos")
 
+                // Poses apply per item, not to the row, so the heart's anchor never moves
                 HStack(spacing: 3) {
                     Text("trueframe")
                         .font(.system(size: 15, weight: .light, design: .default))
                         .foregroundStyle(.white.opacity(0.20))
+                        .revealPose(state(.wordmark), reduceMotion: reduceMotion)
 
                     HeartbeatSymbol()
-                        .offset(y: 1)
+                        .offset(y: HeartGlyph.baselineOffset)
+                        .revealPose(heartStaysPut ? .shown : state(.wordmark), reduceMotion: reduceMotion)
+                        .opacity(sessionHoldsHeart ? 0 : 1)
                 }
                 .padding(.bottom, 50)
-                .revealPose(state(.wordmark), reduceMotion: reduceMotion)
             }
             .padding(.horizontal, 28)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -95,7 +104,12 @@ struct HomeScreen: View {
             }
         }
         .onChange(of: coordinator.isCapturing) { _, isCapturing in
-            if isCapturing { hideContent() }
+            if isCapturing {
+                heartStaysPut = true
+                hideContent()
+            } else if !coordinator.showingTumbleAnimation {
+                showContent(delay: 0)
+            }
         }
         .onChange(of: coordinator.showingTumbleAnimation) { _, showing in
             if showing {
@@ -135,8 +149,7 @@ private struct HeartbeatSymbol: View {
             initialValue: HeartPose(opacity: keyframes.restingOpacity, scale: keyframes.restingScale),
             trigger: beat
         ) { pose in
-            Text("♥")
-                .font(.system(size: 8))
+            HeartGlyph()
                 .foregroundStyle(.white.opacity(reduceMotion ? keyframes.restingOpacity : pose.opacity))
                 .scaleEffect(reduceMotion ? 1 : pose.scale)
         } keyframes: { _ in

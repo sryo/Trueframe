@@ -9,6 +9,8 @@ final class SessionCoordinator {
     private(set) var phase: SessionPhase = .idle
     private(set) var sessionPreviews: [UIImage] = []
     private(set) var hasPermissions = false
+    /// Photos kept into the store this session; dark frames never count.
+    private(set) var capturedCount = 0
 
     let captureSettings = CaptureSettings()
     let cameraSelectionSettings = CameraSelectionSettings()
@@ -78,6 +80,7 @@ final class SessionCoordinator {
         guard phase == .idle, hasPermissions, FileManager.default.hasAdequateSpace else { return }
         phase = .capturing
         consecutiveDarkFrames = 0
+        capturedCount = 0
         sessionPreviews = []
 
         let configuration = currentConfiguration()
@@ -168,6 +171,7 @@ final class SessionCoordinator {
         consecutiveDarkFrames = 0
 
         await store.add(asset)
+        capturedCount += 1
 
         guard phase == .capturing else { return }
         if await store.count >= CurationPolicy.maxPhotosPerSession || !FileManager.default.hasAdequateSpace {
