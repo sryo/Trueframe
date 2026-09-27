@@ -59,4 +59,21 @@ final class CurationPolicyTests: XCTestCase {
         // Unscorable photos must fail open (be saved, not dropped)
         XCTAssertGreaterThanOrEqual(CurationPolicy.unscorableScore, CurationPolicy.qualityThreshold)
     }
+
+    // MARK: - Pitch black
+
+    func testIsPitchBlack_belowThreshold() {
+        XCTAssertTrue(CurationPolicy.isPitchBlack(brightness: 0))
+        XCTAssertTrue(CurationPolicy.isPitchBlack(brightness: 0.049))
+    }
+
+    func testIsPitchBlack_atThreshold_isNotBlack() {
+        XCTAssertEqual(CurationPolicy.pitchBlackBrightness, 0.05)
+        XCTAssertFalse(CurationPolicy.isPitchBlack(brightness: 0.05))
+    }
+
+    func testIsPitchBlack_aboveThreshold_isNotBlack() {
+        XCTAssertFalse(CurationPolicy.isPitchBlack(brightness: 0.051))
+        XCTAssertFalse(CurationPolicy.isPitchBlack(brightness: 1))
+    }
 }

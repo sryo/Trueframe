@@ -3,7 +3,6 @@
 import XCTest
 @testable import Trueframe
 
-/// Tests for UIImage+Rotation extension functionality.
 final class UIImageExtensionTests: XCTestCase {
 
     // MARK: - averageBrightness Tests
@@ -59,7 +58,6 @@ final class UIImageExtensionTests: XCTestCase {
     }
 
     func testIsPitchBlack_dimImage_returnsFalse() {
-        // 10% brightness, above the 5% threshold
         let dimImage = FakeCaptureEngine.makeImage(brightness: 0.10)
 
         XCTAssertFalse(dimImage.isPitchBlack, "Dim but not pitch black image should return false")
@@ -75,18 +73,5 @@ final class UIImageExtensionTests: XCTestCase {
         let whiteImage = FakeCaptureEngine.makeImage(brightness: 1.0)
 
         XCTAssertFalse(whiteImage.isPitchBlack)
-    }
-
-    func testIsPitchBlack_borderlineImage_checkThreshold() {
-        // Exactly at the 5% threshold: < 0.05 is pitch black, so this is not
-        let borderlineImage = FakeCaptureEngine.makeImage(brightness: 0.05)
-
-        XCTAssertFalse(borderlineImage.isPitchBlack, "Image at exactly 5% should not be pitch black")
-    }
-
-    func testIsPitchBlack_justBelowThreshold_returnsTrue() {
-        let veryDarkImage = FakeCaptureEngine.makeImage(brightness: 0.04)
-
-        XCTAssertTrue(veryDarkImage.isPitchBlack, "Image at 4% should be pitch black")
     }
 }

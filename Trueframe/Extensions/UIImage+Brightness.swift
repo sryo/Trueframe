@@ -1,4 +1,4 @@
-// Image orientation and analysis helpers.
+// Image brightness helpers.
 
 import UIKit
 
@@ -29,6 +29,6 @@ extension UIImage {
     }
 
     var isPitchBlack: Bool {
-        averageBrightness() < 0.05  // Less than 5% brightness
+        CurationPolicy.isPitchBlack(brightness: averageBrightness())
     }
 }

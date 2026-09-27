@@ -1,8 +1,12 @@
 // Session limits and photo selection rules.
 
+import CoreGraphics
+
 enum CurationPolicy {
     static let maxPhotosPerSession = 50
     static let maxConsecutiveDarkFrames = 3
+    /// Average brightness below which a frame counts toward `maxConsecutiveDarkFrames`.
+    static let pitchBlackBrightness: CGFloat = 0.05
     static let qualityThreshold: Float = 0.4
     /// Score assigned when a photo can't be scored (no preview, Vision failure).
     /// Sits above the threshold on purpose: unscorable photos are saved, not dropped.
@@ -16,5 +20,9 @@ enum CurationPolicy {
             return [best]
         }
         return passing
+    }
+
+    static func isPitchBlack(brightness: CGFloat) -> Bool {
+        brightness < pitchBlackBrightness
     }
 }
