@@ -3,6 +3,7 @@
 
 @preconcurrency import AVFoundation
 import ImageIO
+import os
 import UIKit
 
 enum CaptureEngineError: Error {
@@ -37,6 +38,7 @@ actor CaptureEngine: CaptureEngineProtocol {
     // 24 MP default: the largest supported dimensions at or below this pixel
     // count are requested. 48 MP is deliberately not used (memory, file size).
     private static let maxPixelCount = 25_000_000
+    private static let logger = Logger(subsystem: "com.trueframe.app", category: "CaptureEngine")
 
     // AVCaptureSession.startRunning() blocks for hundreds of milliseconds;
     // a dedicated queue as the actor's executor keeps that off the shared
@@ -150,7 +152,7 @@ actor CaptureEngine: CaptureEngineProtocol {
                 camera.focusMode = .continuousAutoFocus
                 camera.automaticallyAdjustsFaceDrivenAutoFocusEnabled = true
             } catch {
-                print("[CaptureEngine] Focus lock failed: \(error)")
+                Self.logger.error("Focus lock failed: \(error, privacy: .public)")
             }
         }
 
@@ -184,7 +186,7 @@ actor CaptureEngine: CaptureEngineProtocol {
         do {
             try configureIfNeeded(configuration)
         } catch {
-            print("[CaptureEngine] Configuration failed: \(error)")
+            Self.logger.error("Configuration failed: \(error, privacy: .public)")
             isRunning = false
             continuation?.finish()
             return
@@ -275,6 +277,8 @@ actor CaptureEngine: CaptureEngineProtocol {
 // bookkeeping hops to the engine, so by the time stop() sees a capture
 // finished, its photo is already in the stream.
 private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
+    private static let logger = Logger(subsystem: "com.trueframe.app", category: "PhotoCaptureDelegate")
+
     private let engine: CaptureEngine
     private let events: AsyncStream<CaptureEvent>.Continuation
     private let captureID: Int64
@@ -305,7 +309,7 @@ private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegat
 
     private func deliver(photo: AVCapturePhoto?, isProxy: Bool, error: Error?) {
         if let error {
-            print("[CaptureEngine] Capture failed: \(error)")
+            Self.logger.error("Capture failed: \(error, privacy: .public)")
             return
         }
         // Extract data synchronously in the callback while buffers are valid.
