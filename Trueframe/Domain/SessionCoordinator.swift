@@ -59,7 +59,8 @@ final class SessionCoordinator {
         proximity.start()
         proximityTask = Task { [weak self, events = proximity.events] in
             for await covered in events {
-                guard let self else { return }
+                // A stream delivers what it buffered even after cancellation
+                guard let self, !Task.isCancelled else { return }
                 if covered {
                     beginSession()
                 } else {
