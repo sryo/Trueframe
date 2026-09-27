@@ -4,16 +4,39 @@ import SwiftUI
 
 struct HomeScreen: View {
     @Environment(SessionCoordinator.self) private var coordinator
-    @State private var isVisible = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var reveal: [HomeReveal.Part: HomeReveal.State] = [:]
 
     // MARK: - Visibility Animation Helpers
 
     private func hideContent() {
-        withAnimation(.easeOut(duration: 0.15)) { isVisible = false }
+        withAnimation(Motion.dismiss) {
+            for part in HomeReveal.Part.all { reveal[part] = .left }
+        } completion: {
+            // Reset off screen so the next entrance rises from below instead of the sink point.
+            var reset = Transaction()
+            reset.disablesAnimations = true
+            withTransaction(reset) {
+                for part in HomeReveal.Part.all where reveal[part] == .left { reveal[part] = .waiting }
+            }
+        }
     }
 
-    private func showContent(delay: Double = 0.2) {
-        withAnimation(.easeOut(duration: 0.8).delay(delay)) { isVisible = true }
+    func showContent(delay: Double = 0.2) {
+        for part in HomeReveal.Part.all {
+            withAnimation(entrance(for: part).delay(HomeReveal.delay(for: part, after: delay))) {
+                reveal[part] = .shown
+            }
+        }
+    }
+
+    private func entrance(for part: HomeReveal.Part) -> Animation {
+        if reduceMotion { return .easeOut(duration: 0.25) }
+        return part == .controls ? .spring(duration: 0.7, bounce: 0) : .spring(duration: 0.9, bounce: 0)
+    }
+
+    private func state(_ part: HomeReveal.Part) -> HomeReveal.State {
+        reveal[part] ?? .waiting
     }
 
     // MARK: - Body
@@ -25,12 +48,18 @@ struct HomeScreen: View {
             VStack(alignment: .leading, spacing: 16) {
                 Spacer()
 
-                Text("hold to your heart\nto capture life")
-                    .font(.system(size: 56, weight: .semibold, design: .default))
-                    .lineSpacing(-2)
-                    .foregroundStyle(.white.opacity(0.20))
-                    .blur(radius: isVisible ? 0 : 8)
-                    .opacity(isVisible ? 1 : 0)
+                VStack(alignment: .leading, spacing: -2) {
+                    ForEach(HomeReveal.lines.indices, id: \.self) { index in
+                        Text(HomeReveal.lines[index])
+                            .font(.system(size: 56, weight: .semibold, design: .default))
+                            .lineSpacing(-2)
+                            .foregroundStyle(.white.opacity(0.20))
+                            .revealPose(state(.line(index)), reduceMotion: reduceMotion)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Trueframe home")
+                .accessibilityHint("Hold phone to your heart to start capturing photos")
 
                 HStack(spacing: 3) {
                     Text("trueframe")
@@ -41,8 +70,7 @@ struct HomeScreen: View {
                         .offset(y: 1)
                 }
                 .padding(.bottom, 50)
-                .blur(radius: isVisible ? 0 : 6)
-                .opacity(isVisible ? 1 : 0)
+                .revealPose(state(.wordmark), reduceMotion: reduceMotion)
             }
             .padding(.horizontal, 28)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -58,17 +86,14 @@ struct HomeScreen: View {
                         // Capture interval picker (0.25s = burst-like speed)
                         CaptureIntervalPicker(settings: coordinator.captureSettings)
                     }
-                    .opacity(isVisible ? 0.7 : 0)
-                    .blur(radius: isVisible ? 0 : 6)
-                    .animation(.easeOut(duration: 0.6).delay(0.4), value: isVisible)
+                    .opacity(0.7)
+                    .revealPose(state(.controls), reduceMotion: reduceMotion, rises: false)
                 }
                 .padding(.top, 60)
                 .padding(.horizontal, 20)
                 Spacer()
             }
         }
-        .accessibilityLabel("Trueframe home")
-        .accessibilityHint("Hold phone to your heart to start capturing photos")
         .onChange(of: coordinator.isCapturing) { _, isCapturing in
             if isCapturing { hideContent() }
         }
@@ -82,6 +107,16 @@ struct HomeScreen: View {
         .onAppear {
             if !coordinator.isCapturing { showContent() }
         }
+    }
+}
+
+private extension View {
+    func revealPose(_ state: HomeReveal.State, reduceMotion: Bool, rises: Bool = true) -> some View {
+        let pose = HomeReveal.pose(for: state, reduceMotion: reduceMotion, rises: rises)
+        return self
+            .blur(radius: pose.blur)
+            .opacity(pose.opacity)
+            .offset(y: pose.offsetY)
     }
 }
 
