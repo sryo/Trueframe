@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct TrueframeApp: App {
-    @State private var coordinator = SessionCoordinator()
+    @State private var coordinator = Self.makeCoordinator()
 
     var body: some Scene {
         WindowGroup {
@@ -16,5 +16,12 @@ struct TrueframeApp: App {
                     await coordinator.start()
                 }
         }
+    }
+
+    private static func makeCoordinator() -> SessionCoordinator {
+        #if DEBUG
+        if DemoSession.isRequested { return DemoSession.makeCoordinator() }
+        #endif
+        return SessionCoordinator()
     }
 }
