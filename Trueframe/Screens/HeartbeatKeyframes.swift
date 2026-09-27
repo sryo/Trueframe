@@ -30,8 +30,4 @@ struct HeartbeatKeyframes: Equatable {
             Step(opacity: dim, scale: 1.0, duration: 0.70, easesOut: true),
         ]
     }
-
-    var totalDuration: TimeInterval {
-        steps.reduce(0) { $0 + $1.duration }
-    }
 }

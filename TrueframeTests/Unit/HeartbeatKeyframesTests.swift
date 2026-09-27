@@ -58,3 +58,9 @@ final class HeartbeatKeyframesTests: XCTestCase {
         XCTAssertEqual(Motion.restingBeatInterval, .seconds(60.0 / 52))
     }
 }
+
+private extension HeartbeatKeyframes {
+    var totalDuration: TimeInterval {
+        steps.reduce(0) { $0 + $1.duration }
+    }
+}
