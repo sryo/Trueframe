@@ -5,6 +5,10 @@ import UIKit
 
 actor FakePhotoScorer: PhotoScoring {
     private var presetScores: [Float] = []
+    private(set) var callCount = 0
+
+    private var holdsScores = false
+    private var scoreGate: CheckedContinuation<Void, Never>?
 
     func setScores(_ scores: [Float]) {
         presetScores = scores
@@ -12,8 +16,24 @@ actor FakePhotoScorer: PhotoScoring {
 
     /// Preset scores in order; images beyond the preset get the unscorable score.
     func scores(for images: [UIImage?]) async -> [Float] {
-        images.indices.map { index in
+        callCount += 1
+        let result = images.indices.map { index in
             index < presetScores.count ? presetScores[index] : CurationPolicy.unscorableScore
         }
+        if holdsScores {
+            await withCheckedContinuation { scoreGate = $0 }
+        }
+        return result
+    }
+
+    /// Makes scores(for:) suspend, like a slow Vision pass, until releaseScores().
+    func holdScores() {
+        holdsScores = true
+    }
+
+    func releaseScores() {
+        holdsScores = false
+        scoreGate?.resume()
+        scoreGate = nil
     }
 }

@@ -13,6 +13,8 @@ final class SessionCoordinator {
     private(set) var capturedCount = 0
     /// How many photos saving picked from the last session; nil until it has picked.
     private(set) var keptCount: Int?
+    /// Whether each of `sessionPreviews` will be saved; nil until scoring answers.
+    private(set) var keptPreviews: [Bool]?
 
     let captureSettings = CaptureSettings()
     let cameraSelectionSettings = CameraSelectionSettings()
@@ -34,6 +36,12 @@ final class SessionCoordinator {
     @ObservationIgnored private(set) var saveTask: Task<Void, Never>?
     @ObservationIgnored private(set) var libraryWrite: Task<Void, Never>?
     @ObservationIgnored private var consecutiveDarkFrames = 0
+    @ObservationIgnored private var curation: Task<Curation, Never>?
+
+    private struct Curation {
+        let entries: [SessionStore.Entry]
+        let selected: [Int]
+    }
 
     init(
         engine: any CaptureEngineProtocol = CaptureEngine(),
@@ -85,6 +93,7 @@ final class SessionCoordinator {
         capturedCount = 0
         keptCount = nil
         sessionPreviews = []
+        keptPreviews = nil
 
         let configuration = currentConfiguration()
         eventTask = Task { await runSession(configuration) }
@@ -100,8 +109,9 @@ final class SessionCoordinator {
     func tumbleAnimationComplete() {
         guard phase == .celebrating else { return }
         phase = .saving
+        let curation = curation
         saveTask = Task {
-            let items = await curatedItems()
+            let items = await curatedItems(await curation?.value)
             keptCount = items.count
             // The photo library may take arbitrarily long to answer; the items
             // are already in memory, so the next session need not wait for it
@@ -142,6 +152,8 @@ final class SessionCoordinator {
         } else {
             sessionPreviews = previews
             phase = .celebrating
+            // Scored now, so the animation can show what's dropped
+            curation = Task { await curate() }
         }
     }
 
@@ -183,16 +195,22 @@ final class SessionCoordinator {
         }
     }
 
-    private func curatedItems() async -> [LibrarySaver.Item] {
+    private func curate() async -> Curation {
         let entries = await store.allEntries()
-        guard !entries.isEmpty else { return [] }
-
         let scores = await scorer.scores(for: entries.map(\.preview))
         let selected = CurationPolicy.selectionIndices(scores: scores)
+        let kept = Set(selected)
+        if phase == .celebrating || phase == .saving {
+            keptPreviews = entries.indices.filter { entries[$0].preview != nil }.map(kept.contains)
+        }
+        return Curation(entries: entries, selected: selected)
+    }
 
+    private func curatedItems(_ curation: Curation?) async -> [LibrarySaver.Item] {
+        guard let curation else { return [] }
         var items: [LibrarySaver.Item] = []
-        for index in selected {
-            let entry = entries[index]
+        for index in curation.selected {
+            let entry = curation.entries[index]
             if let data = await store.fileData(for: entry.id) {
                 items.append(LibrarySaver.Item(data: data, isProxy: entry.isProxy, capturedAt: entry.capturedAt))
             }
@@ -211,6 +229,8 @@ final class SessionCoordinator {
     private func resetToIdle() async {
         await store.clearSession()
         sessionPreviews = []
+        keptPreviews = nil
+        curation = nil
         phase = .idle
         await engine.prewarm(currentConfiguration())
     }

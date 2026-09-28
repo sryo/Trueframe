@@ -365,6 +365,106 @@ final class SessionCoordinatorTests: XCTestCase {
         await sut.libraryWrite?.value
     }
 
+    private func endSessionWithPhotos(_ assets: [CapturedAsset]) async {
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 1 }
+        for asset in assets { engine.emit(.captured(asset)) }
+        await waitForStoredPhotos(assets.count)
+        await sut.endSession()
+    }
+
+    func testVerdict_isPublishedWhileTheAnimationPlays() async {
+        await scorer.setScores([0.9, 0.1, 0.5])
+        await endSessionWithPhotos((0..<3).map { _ in FakeCaptureEngine.makeAsset() })
+
+        await waitUntil { self.sut.keptPreviews != nil }
+
+        XCTAssertEqual(sut.phase, .celebrating)
+        XCTAssertEqual(sut.keptPreviews, [true, false, true])
+    }
+
+    func testVerdict_isUnknownUntilScoringAnswers() async {
+        await scorer.holdScores()
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
+        await waitUntil { await self.scorer.callCount == 1 }
+
+        XCTAssertEqual(sut.phase, .celebrating)
+        XCTAssertNil(sut.keptPreviews)
+
+        await scorer.releaseScores()
+        await waitUntil { self.sut.keptPreviews == [true] }
+    }
+
+    func testVerdict_linesUpWithThePreviewsShown() async {
+        await scorer.setScores([0.9, 0.9, 0.1])
+        let unseen = CapturedAsset(id: UUID(), fileData: Data([0x01]), preview: nil, isProxy: false, capturedAt: .now)
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset(), unseen, FakeCaptureEngine.makeAsset()])
+
+        await waitUntil { self.sut.keptPreviews != nil }
+
+        XCTAssertEqual(sut.sessionPreviews.count, 2)
+        XCTAssertEqual(sut.keptPreviews, [true, false])
+    }
+
+    func testSaving_usesTheVerdictTheAnimationShowed() async throws {
+        await scorer.setScores([0.9, 0.1])
+        let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
+        let reject = FakeCaptureEngine.makeAsset(fileData: Data([0x02]))
+        await endSessionWithPhotos([keeper, reject])
+        await waitUntil { self.sut.keptPreviews != nil }
+        // A second pass would now pick the other photo
+        await scorer.setScores([0.1, 0.9])
+
+        sut.tumbleAnimationComplete()
+        await sut.saveTask?.value
+        await sut.libraryWrite?.value
+
+        let batches = await saver.savedBatches
+        XCTAssertEqual(batches.first?.map(\.data), [keeper.fileData])
+        XCTAssertEqual(sut.keptCount, 1)
+    }
+
+    func testScoring_runsOncePerSession() async {
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset(), FakeCaptureEngine.makeAsset()])
+        await waitUntil { self.sut.keptPreviews != nil }
+
+        sut.tumbleAnimationComplete()
+        await sut.saveTask?.value
+
+        let calls = await scorer.callCount
+        XCTAssertEqual(calls, 1)
+    }
+
+    func testSlowScorer_savingWaitsForTheVerdict() async {
+        await scorer.setScores([0.1, 0.9])
+        await scorer.holdScores()
+        let reject = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
+        let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x02]))
+        await endSessionWithPhotos([reject, keeper])
+
+        sut.tumbleAnimationComplete()
+        XCTAssertEqual(sut.phase, .saving)
+        await scorer.releaseScores()
+        await sut.saveTask?.value
+        await sut.libraryWrite?.value
+
+        XCTAssertEqual(sut.phase, .idle)
+        let batches = await saver.savedBatches
+        XCTAssertEqual(batches.first?.map(\.data), [keeper.fileData])
+        let calls = await scorer.callCount
+        XCTAssertEqual(calls, 1)
+    }
+
+    func testVerdict_clearsWhenTheSessionIsOver() async {
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
+        await waitUntil { self.sut.keptPreviews != nil }
+
+        sut.tumbleAnimationComplete()
+        await sut.saveTask?.value
+
+        XCTAssertNil(sut.keptPreviews)
+    }
+
     func testKeptCount_isUnknownUntilSavingHasSelected() async throws {
         await scorer.setScores([0.9, 0.1, 0.5])
         sut.beginSession()
