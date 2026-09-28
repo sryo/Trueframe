@@ -27,15 +27,20 @@ struct ContentView: View {
                                 heartFrame: heartFrame,
                                 canvas: proxy.size,
                                 onComplete: {
-                                    coordinator.tumbleAnimationComplete()
+                                    // A new session may have taken over and be celebrating by now
+                                    if self.celebration?.id == celebration.id {
+                                        coordinator.tumbleAnimationComplete()
+                                    }
                                 },
                                 onFinished: {
                                     if self.celebration?.id == celebration.id { self.celebration = nil }
                                 }
                             )
                             .id(celebration.id)
-                            // The photos bring their own entrance; a fade would hide it
-                            .transition(.identity)
+                            .allowsHitTesting(!coordinator.isCapturing)
+                            // The photos bring their own entrance; a fade would hide it.
+                            // Only a new session animates the removal, so only it fades
+                            .transition(.asymmetric(insertion: .identity, removal: .opacity))
                         }
                     }
                 }
@@ -47,6 +52,9 @@ struct ContentView: View {
             }
             .onChange(of: coordinator.isCapturing) { _, capturing in
                 if capturing {
+                    if celebration != nil {
+                        withAnimation(Motion.dismiss) { celebration = nil }
+                    }
                     AccessibilityNotification.Announcement(SessionAnnouncements.capturing).post()
                 }
             }
