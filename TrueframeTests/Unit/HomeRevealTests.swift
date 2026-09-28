@@ -25,35 +25,35 @@ final class HomeRevealTests: XCTestCase {
     }
 
     func testWaiting_isBelowBlurredAndInvisible() {
-        let pose = HomeReveal.pose(for: .waiting, reduceMotion: false)
+        let pose = HomeReveal.pose(for: .wordmark, state: .waiting, reduceMotion: false)
         XCTAssertEqual(pose, HomeReveal.Pose(opacity: 0, offsetY: 12, blur: 6))
     }
 
     func testShown_isInPlaceAndSharp() {
-        let pose = HomeReveal.pose(for: .shown, reduceMotion: false)
+        let pose = HomeReveal.pose(for: .wordmark, state: .shown, reduceMotion: false)
         XCTAssertEqual(pose, HomeReveal.Pose(opacity: 1, offsetY: 0, blur: 0))
     }
 
     func testLeft_sinksFourPointsAndDissolves() {
-        let pose = HomeReveal.pose(for: .left, reduceMotion: false)
+        let pose = HomeReveal.pose(for: .wordmark, state: .left, reduceMotion: false)
         XCTAssertEqual(pose, HomeReveal.Pose(opacity: 0, offsetY: 4, blur: 0))
     }
 
     func testControls_fadeInWithoutRisingButStillSink() {
         XCTAssertFalse(HomeReveal.Part.controls.rises)
         XCTAssertTrue(HomeReveal.Part.line(0).rises)
-        XCTAssertEqual(HomeReveal.pose(for: .waiting, reduceMotion: false, rises: false).offsetY, 0)
-        XCTAssertEqual(HomeReveal.pose(for: .waiting, reduceMotion: false, rises: false).blur, 6)
-        XCTAssertEqual(HomeReveal.pose(for: .left, reduceMotion: false, rises: false).offsetY, 4)
+        XCTAssertEqual(HomeReveal.pose(for: .controls, state: .waiting, reduceMotion: false).offsetY, 0)
+        XCTAssertEqual(HomeReveal.pose(for: .controls, state: .waiting, reduceMotion: false).blur, 6)
+        XCTAssertEqual(HomeReveal.pose(for: .controls, state: .left, reduceMotion: false).offsetY, 4)
     }
 
     func testReduceMotion_onlyFades() {
         for state in [HomeReveal.State.waiting, .shown, .left] {
-            let pose = HomeReveal.pose(for: state, reduceMotion: true)
+            let pose = HomeReveal.pose(for: .wordmark, state: state, reduceMotion: true)
             XCTAssertEqual(pose.offsetY, 0)
             XCTAssertEqual(pose.blur, 0)
         }
-        XCTAssertEqual(HomeReveal.pose(for: .shown, reduceMotion: true).opacity, 1)
-        XCTAssertEqual(HomeReveal.pose(for: .waiting, reduceMotion: true).opacity, 0)
+        XCTAssertEqual(HomeReveal.pose(for: .wordmark, state: .shown, reduceMotion: true).opacity, 1)
+        XCTAssertEqual(HomeReveal.pose(for: .wordmark, state: .waiting, reduceMotion: true).opacity, 0)
     }
 }

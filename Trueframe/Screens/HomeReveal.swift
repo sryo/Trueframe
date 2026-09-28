@@ -43,9 +43,9 @@ enum HomeReveal {
         }
     }
 
-    static func pose(for state: State, reduceMotion: Bool, rises: Bool = true) -> Pose {
+    static func pose(for part: Part, state: State, reduceMotion: Bool) -> Pose {
         let pose = switch state {
-        case .waiting: Pose(opacity: 0, offsetY: rises ? riseDistance : 0, blur: startBlur)
+        case .waiting: Pose(opacity: 0, offsetY: part.rises ? riseDistance : 0, blur: startBlur)
         case .shown: Pose(opacity: 1, offsetY: 0, blur: 0)
         case .left: Pose(opacity: 0, offsetY: sinkDistance, blur: 0)
         }

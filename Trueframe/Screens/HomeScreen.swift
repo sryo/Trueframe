@@ -55,7 +55,7 @@ struct HomeScreen: View {
                             .font(.system(size: 56, weight: .semibold, design: .default))
                             .lineSpacing(-2)
                             .foregroundStyle(.white.opacity(0.20))
-                            .revealPose(state(.line(index)), reduceMotion: reduceMotion)
+                            .revealPose(.line(index), state(.line(index)), reduceMotion: reduceMotion)
                     }
                 }
                 .accessibilityElement(children: .combine)
@@ -67,11 +67,11 @@ struct HomeScreen: View {
                     Text("trueframe")
                         .font(.system(size: 15, weight: .light, design: .default))
                         .foregroundStyle(.white.opacity(0.20))
-                        .revealPose(state(.wordmark), reduceMotion: reduceMotion)
+                        .revealPose(.wordmark, state(.wordmark), reduceMotion: reduceMotion)
 
                     HeartbeatSymbol(landings: landings)
                         .offset(y: HeartGlyph.baselineOffset)
-                        .revealPose(heartStaysPut ? .shown : state(.wordmark), reduceMotion: reduceMotion)
+                        .revealPose(.wordmark, heartStaysPut ? .shown : state(.wordmark), reduceMotion: reduceMotion)
                         .opacity(sessionHoldsHeart ? 0 : 1)
                         // Crossfades with the capture heart so a beat in progress never snaps
                         .animation(sessionHoldsHeart ? Motion.dismiss : nil, value: sessionHoldsHeart)
@@ -91,7 +91,7 @@ struct HomeScreen: View {
                         CaptureIntervalPicker(settings: coordinator.captureSettings)
                     }
                     .opacity(0.7)
-                    .revealPose(state(.controls), reduceMotion: reduceMotion, rises: false)
+                    .revealPose(.controls, state(.controls), reduceMotion: reduceMotion)
                 }
                 .padding(.top, 60)
                 .padding(.horizontal, 20)
@@ -121,8 +121,8 @@ struct HomeScreen: View {
 }
 
 private extension View {
-    func revealPose(_ state: HomeReveal.State, reduceMotion: Bool, rises: Bool = true) -> some View {
-        let pose = HomeReveal.pose(for: state, reduceMotion: reduceMotion, rises: rises)
+    func revealPose(_ part: HomeReveal.Part, _ state: HomeReveal.State, reduceMotion: Bool) -> some View {
+        let pose = HomeReveal.pose(for: part, state: state, reduceMotion: reduceMotion)
         return self
             .blur(radius: pose.blur)
             .opacity(pose.opacity)
