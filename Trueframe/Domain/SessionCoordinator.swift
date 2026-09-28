@@ -13,10 +13,8 @@ final class SessionCoordinator {
     private(set) var capturedCount = 0
     /// How many photos saving picked from the last session; nil until it has picked.
     private(set) var keptCount: Int?
-    /// Whether each of `sessionPreviews` will be saved; nil until scoring answers.
-    private(set) var keptPreviews: [Bool]?
-    /// Each of `sessionPreviews`' score, published with `keptPreviews`.
-    private(set) var previewScores: [Float]?
+    /// What curation decided about each of `sessionPreviews`; nil until scoring answers.
+    private(set) var verdict: Verdict?
 
     let captureSettings = CaptureSettings()
     let cameraSelectionSettings = CameraSelectionSettings()
@@ -98,18 +96,14 @@ final class SessionCoordinator {
         if phase == .celebrating {
             // Nobody will finish the animation now, so its save starts here;
             // in .saving the save is already running and notices the handover
-            let curation = curation, session = session
-            saveTask = Task { await save(curation, session: session) }
+            startSave()
         }
         session += 1
         phase = .capturing
         consecutiveDarkFrames = 0
         capturedCount = 0
         keptCount = nil
-        sessionPreviews = []
-        keptPreviews = nil
-        previewScores = nil
-        curation = nil
+        clearCelebrationState()
 
         let configuration = currentConfiguration()
         eventTask = Task { await runSession(configuration, detachingPrevious: interrupting) }
@@ -125,6 +119,10 @@ final class SessionCoordinator {
     func tumbleAnimationComplete() {
         guard phase == .celebrating else { return }
         phase = .saving
+        startSave()
+    }
+
+    private func startSave() {
         let curation = curation, session = session
         saveTask = Task { await save(curation, session: session) }
     }
@@ -222,7 +220,7 @@ final class SessionCoordinator {
         capturedCount += 1
 
         guard phase == .capturing else { return }
-        if await store.count >= CurationPolicy.maxPhotosPerSession || !FileManager.default.hasAdequateSpace {
+        if capturedCount >= CurationPolicy.maxPhotosPerSession || !FileManager.default.hasAdequateSpace {
             await stopCapturing()
         }
     }
@@ -233,8 +231,7 @@ final class SessionCoordinator {
         let kept = Set(selected)
         if session == self.session {
             let shown = entries.indices.filter { entries[$0].preview != nil }
-            previewScores = shown.map { scores[$0] }
-            keptPreviews = shown.map(kept.contains)
+            verdict = Verdict(kept: shown.map(kept.contains), scores: shown.map { scores[$0] })
         }
         return Curation(entries: entries, selected: selected)
     }
@@ -262,12 +259,15 @@ final class SessionCoordinator {
     private func resetToIdle(session: Int) async {
         await store.clearSession()
         guard session == self.session else { return }
-        sessionPreviews = []
-        keptPreviews = nil
-        previewScores = nil
-        curation = nil
+        clearCelebrationState()
         phase = .idle
         await engine.prewarm(currentConfiguration())
+    }
+
+    private func clearCelebrationState() {
+        sessionPreviews = []
+        verdict = nil
+        curation = nil
     }
 
     private func currentConfiguration() -> CaptureConfiguration {

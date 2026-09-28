@@ -24,3 +24,9 @@ enum CurationPolicy {
         brightness < pitchBlackBrightness
     }
 }
+
+/// What curation decided, one entry per preview.
+struct Verdict: Equatable, Sendable {
+    var kept: [Bool]
+    var scores: [Float]
+}

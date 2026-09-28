@@ -23,12 +23,6 @@ enum FanLayout {
     static let stagger: TimeInterval = 0.03
     static let hold: Duration = .seconds(0.7)
 
-    /// What curation decided, one entry per preview.
-    struct Verdict: Equatable, Sendable {
-        var kept: [Bool]
-        var scores: [Float]
-    }
-
     enum Plan: Equatable {
         /// Nothing judged in time, or nothing to show: straight home.
         case skip

@@ -22,7 +22,7 @@ struct TumbleAnimationView: View {
 
     private let previews: [UIImage]
     /// What curation decided about `previews`; nil until it has.
-    private let verdict: @MainActor () -> FanLayout.Verdict?
+    private let verdict: @MainActor () -> Verdict?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Indices into `previews`, in capture order; empty until the verdict.
@@ -36,7 +36,7 @@ struct TumbleAnimationView: View {
 
     init(
         photos: [UIImage],
-        verdict: @escaping @MainActor () -> FanLayout.Verdict?,
+        verdict: @escaping @MainActor () -> Verdict?,
         heartFrame: CGRect?,
         canvas: CGSize,
         onComplete: @escaping () -> Void,

@@ -365,10 +365,10 @@ final class SessionCoordinatorTests: XCTestCase {
         await scorer.setScores([0.9, 0.1, 0.5])
         await endSessionWithPhotos((0..<3).map { _ in FakeCaptureEngine.makeAsset() })
 
-        await waitUntil { self.sut.keptPreviews != nil }
+        await waitUntil { self.sut.verdict != nil }
 
         XCTAssertEqual(sut.phase, .celebrating)
-        XCTAssertEqual(sut.keptPreviews, [true, false, true])
+        XCTAssertEqual(sut.verdict?.kept, [true, false, true])
     }
 
     func testVerdict_publishesTheScoresOfThePreviewsShown() async {
@@ -376,10 +376,10 @@ final class SessionCoordinatorTests: XCTestCase {
         let unseen = CapturedAsset(id: UUID(), fileData: Data([0x01]), preview: nil, isProxy: false, capturedAt: .now)
         await endSessionWithPhotos([FakeCaptureEngine.makeAsset(), unseen, FakeCaptureEngine.makeAsset()])
 
-        await waitUntil { self.sut.previewScores != nil }
+        await waitUntil { self.sut.verdict != nil }
 
-        XCTAssertEqual(sut.previewScores, [0.9, 0.1])
-        XCTAssertEqual(sut.keptPreviews, [true, false])
+        XCTAssertEqual(sut.verdict?.scores, [0.9, 0.1])
+        XCTAssertEqual(sut.verdict?.kept, [true, false])
     }
 
     func testVerdict_isUnknownUntilScoringAnswers() async {
@@ -388,10 +388,10 @@ final class SessionCoordinatorTests: XCTestCase {
         await waitUntil { await self.scorer.callCount == 1 }
 
         XCTAssertEqual(sut.phase, .celebrating)
-        XCTAssertNil(sut.keptPreviews)
+        XCTAssertNil(sut.verdict)
 
         await scorer.releaseScores()
-        await waitUntil { self.sut.keptPreviews == [true] }
+        await waitUntil { self.sut.verdict?.kept == [true] }
     }
 
     func testVerdict_linesUpWithThePreviewsShown() async {
@@ -399,10 +399,10 @@ final class SessionCoordinatorTests: XCTestCase {
         let unseen = CapturedAsset(id: UUID(), fileData: Data([0x01]), preview: nil, isProxy: false, capturedAt: .now)
         await endSessionWithPhotos([FakeCaptureEngine.makeAsset(), unseen, FakeCaptureEngine.makeAsset()])
 
-        await waitUntil { self.sut.keptPreviews != nil }
+        await waitUntil { self.sut.verdict != nil }
 
         XCTAssertEqual(sut.sessionPreviews.count, 2)
-        XCTAssertEqual(sut.keptPreviews, [true, false])
+        XCTAssertEqual(sut.verdict?.kept, [true, false])
     }
 
     func testSaving_usesTheVerdictTheAnimationShowed() async throws {
@@ -410,7 +410,7 @@ final class SessionCoordinatorTests: XCTestCase {
         let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
         let reject = FakeCaptureEngine.makeAsset(fileData: Data([0x02]))
         await endSessionWithPhotos([keeper, reject])
-        await waitUntil { self.sut.keptPreviews != nil }
+        await waitUntil { self.sut.verdict != nil }
         // A second pass would now pick the other photo
         await scorer.setScores([0.1, 0.9])
 
@@ -425,7 +425,7 @@ final class SessionCoordinatorTests: XCTestCase {
 
     func testScoring_runsOncePerSession() async {
         await endSessionWithPhotos([FakeCaptureEngine.makeAsset(), FakeCaptureEngine.makeAsset()])
-        await waitUntil { self.sut.keptPreviews != nil }
+        await waitUntil { self.sut.verdict != nil }
 
         sut.tumbleAnimationComplete()
         await sut.saveTask?.value
@@ -456,12 +456,12 @@ final class SessionCoordinatorTests: XCTestCase {
 
     func testVerdict_clearsWhenTheSessionIsOver() async {
         await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
-        await waitUntil { self.sut.keptPreviews != nil }
+        await waitUntil { self.sut.verdict != nil }
 
         sut.tumbleAnimationComplete()
         await sut.saveTask?.value
 
-        XCTAssertNil(sut.keptPreviews)
+        XCTAssertNil(sut.verdict)
     }
 
     func testKeptCount_isUnknownUntilSavingHasSelected() async throws {
@@ -560,7 +560,7 @@ final class SessionCoordinatorTests: XCTestCase {
         let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
         let reject = FakeCaptureEngine.makeAsset(fileData: Data([0x02]))
         await endSessionWithPhotos([keeper, reject])
-        await waitUntil { self.sut.keptPreviews != nil }
+        await waitUntil { self.sut.verdict != nil }
 
         sut.beginSession()
         let interruptedSave = try XCTUnwrap(sut.saveTask)
@@ -661,13 +661,13 @@ final class SessionCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(sut.capturedCount, 0)
         XCTAssertTrue(sut.sessionPreviews.isEmpty)
-        XCTAssertNil(sut.keptPreviews)
+        XCTAssertNil(sut.verdict)
         XCTAssertNil(sut.keptCount)
 
         // The old verdict arriving late must not paint the new session
         await scorer.releaseScores()
         await sut.saveTask?.value
-        XCTAssertNil(sut.keptPreviews)
+        XCTAssertNil(sut.verdict)
         await sut.endSession()
     }
 

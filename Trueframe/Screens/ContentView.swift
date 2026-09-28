@@ -23,10 +23,7 @@ struct ContentView: View {
                         if let celebration {
                             TumbleAnimationView(
                                 photos: celebration.photos,
-                                verdict: {
-                                    guard let kept = coordinator.keptPreviews, let scores = coordinator.previewScores else { return nil }
-                                    return FanLayout.Verdict(kept: kept, scores: scores)
-                                },
+                                verdict: { coordinator.verdict },
                                 heartFrame: heartFrame,
                                 canvas: proxy.size,
                                 onComplete: {

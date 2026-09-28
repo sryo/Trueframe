@@ -51,8 +51,8 @@ final class FanLayoutTests: XCTestCase {
         XCTAssertEqual(FanLayout.delay(for: 4), 0.12, accuracy: 1e-9)
     }
 
-    private func verdict(_ kept: [Bool], scores: [Float]? = nil) -> FanLayout.Verdict {
-        FanLayout.Verdict(kept: kept, scores: scores ?? kept.map { _ in 0.5 })
+    private func verdict(_ kept: [Bool], scores: [Float]? = nil) -> Verdict {
+        Verdict(kept: kept, scores: scores ?? kept.map { _ in 0.5 })
     }
 
     func testPlan_withoutAVerdictSkipsTheFan() {
@@ -93,7 +93,7 @@ final class FanLayoutTests: XCTestCase {
 
     func testPlan_capsAtTheFirstSevenKeptWhenScoresDontLineUp() {
         let kept = Array(repeating: true, count: 9)
-        XCTAssertEqual(FanLayout.plan(for: FanLayout.Verdict(kept: kept, scores: [])), .fan(Array(0..<7)))
+        XCTAssertEqual(FanLayout.plan(for: Verdict(kept: kept, scores: [])), .fan(Array(0..<7)))
     }
 
     func testVerdictDeadline_givesScoringABeatAndAHalf() {
