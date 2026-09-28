@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-enum BackCameraType: String, CaseIterable, Equatable, Sendable {
+enum BackCameraType: String, CaseIterable, Sendable {
     case wide
     case ultrawide
     case telephoto

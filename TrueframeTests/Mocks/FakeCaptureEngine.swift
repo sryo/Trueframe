@@ -81,7 +81,8 @@ final class FakeCaptureEngine: CaptureEngineProtocol {
         )
     }
 
-    nonisolated static func makeImage(brightness: CGFloat, size: CGSize = CGSize(width: 32, height: 32)) -> UIImage {
+    nonisolated static func makeImage(brightness: CGFloat) -> UIImage {
+        let size = CGSize(width: 32, height: 32)
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
             UIColor(white: brightness, alpha: 1.0).setFill()

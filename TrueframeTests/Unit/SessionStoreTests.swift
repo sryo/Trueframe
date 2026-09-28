@@ -27,7 +27,7 @@ final class SessionStoreTests: XCTestCase {
     func testEmptyStore_hasNoEntries() async {
         let count = await sut.count
         XCTAssertEqual(count, 0)
-        let previews = await sut.previews
+        let previews = await sut.allEntries().compactMap(\.preview)
         XCTAssertTrue(previews.isEmpty)
     }
 
@@ -38,7 +38,7 @@ final class SessionStoreTests: XCTestCase {
 
         let count = await sut.count
         XCTAssertEqual(count, 1)
-        let previews = await sut.previews
+        let previews = await sut.allEntries().compactMap(\.preview)
         XCTAssertEqual(previews.count, 1)
     }
 

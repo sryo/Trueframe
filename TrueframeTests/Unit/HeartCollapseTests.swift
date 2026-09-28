@@ -34,7 +34,7 @@ final class HeartCollapseTests: XCTestCase {
         XCTAssertEqual(pose.offset.x, 0, accuracy: 1e-9)
         XCTAssertEqual(pose.offset.y, 0, accuracy: 1e-9)
         XCTAssertEqual(pose.opacity, 0, accuracy: 1e-9)
-        XCTAssertEqual(pose.scale, 0.04, accuracy: 1e-9)
+        XCTAssertEqual(pose.scaleX * pose.scaleY, 0.04 * 0.04, accuracy: 1e-9)
     }
 
     func testInfall_accelerates() {

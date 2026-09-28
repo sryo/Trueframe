@@ -40,10 +40,6 @@ actor SessionStore {
         entries.count
     }
 
-    var previews: [UIImage] {
-        entries.compactMap(\.preview)
-    }
-
     func allEntries() -> [Entry] {
         entries
     }

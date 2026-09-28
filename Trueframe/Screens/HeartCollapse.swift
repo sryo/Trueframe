@@ -13,7 +13,6 @@ enum HeartCollapse {
         var rotation: Double
         /// The axis it's stretched along: its direction of travel.
         var direction: Double
-        var scale: CGFloat
         var scaleX: CGFloat
         var scaleY: CGFloat
         var opacity: Double
@@ -62,7 +61,6 @@ enum HeartCollapse {
             offset: here,
             rotation: fanRotation + 1.5 * 2.2 * x * x * x,
             direction: ahead == here ? 0 : atan2(ahead.y - here.y, ahead.x - here.x),
-            scale: scale,
             scaleX: scale * stretch,
             scaleY: scale / stretch,
             opacity: x > 0.85 ? 1 - (x - 0.85) / 0.15 : 1
@@ -72,8 +70,8 @@ enum HeartCollapse {
     /// The share of the photos that have landed.
     static func absorbed(at time: Double, count: Int) -> CGFloat {
         guard count > 0 else { return 0 }
-        let landed = (0..<count).filter { progress(at: time, index: $0, count: count) >= 1 }.count
-        return CGFloat(landed) / CGFloat(count)
+        let landedCount = (0..<count).filter { progress(at: time, index: $0, count: count) >= 1 }.count
+        return CGFloat(landedCount) / CGFloat(count)
     }
 
     /// A damped wobble for each landing, as a fraction of the heart's size.
