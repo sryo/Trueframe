@@ -397,7 +397,14 @@ function start(stage) {
     shadowUniform.value[i].set(x + SHADOW_DIR.x * length * 0.42, z + SHADOW_DIR.z * length * 0.42, width / 2, length / 2);
   }
 
-  // Ground: a lime to olive ramp from the horizon toward the viewer, dotted with flat patches.
+  // Ground: three flat fields, indigo near, violet mid, magenta far, meeting at ragged
+  // wavy lines rather than a smooth ramp, dotted with flat patches and painted with
+  // little tuft marks in the next tone up, like strokes of a brush on a poster.
+  const EDGE_NEAR = (x) => -7.2 + 0.28 * Math.sin(x * 1.3 + 0.4) + 0.16 * Math.sin(x * 3.1 + 2.0);
+  const EDGE_FAR = (x) => -19 + 0.9 * Math.sin(x * 0.45 + 1.0) + 0.4 * Math.sin(x * 1.7);
+  const EDGE_GLSL = `
+    float edgeNear(float x) { return -7.2 + 0.28 * sin(x * 1.3 + 0.4) + 0.16 * sin(x * 3.1 + 2.0); }
+    float edgeFar(float x) { return -19.0 + 0.9 * sin(x * 0.45 + 1.0) + 0.4 * sin(x * 1.7); }`;
   const groundGeo = new THREE.PlaneGeometry(600, 600, 1, 1);
   groundGeo.rotateX(-Math.PI / 2);
   const groundTex = canvasTexture(256, (c, s) => {
@@ -416,6 +423,34 @@ function start(stage) {
   groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
   groundTex.repeat.set(40, 40);
   groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  // Tuft marks: three tapered strokes fanning out of one root, white on black. Canvas up
+  // maps to away from the viewer, so the strokes stand upright on screen.
+  const HATCH_TILE = 2.6;
+  const hatchTex = canvasTexture(512, (c, s) => {
+    c.fillStyle = '#000';
+    c.fillRect(0, 0, s, s);
+    c.fillStyle = '#fff';
+    const stroke = (x0, y0, x1, y1, w) => {
+      const dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy), nx = (-dy / l) * w, ny = (dx / l) * w;
+      for (const [ox, oy] of [[0, 0], [s, 0], [-s, 0], [0, s], [0, -s]]) {
+        c.beginPath();
+        c.moveTo(x0 + nx + ox, y0 + ny + oy);
+        c.lineTo(x1 + ox, y1 + oy);
+        c.lineTo(x0 - nx + ox, y0 - ny + oy);
+        c.fill();
+      }
+    };
+    for (let i = 0; i < 70; i++) {
+      const x = rand(0, s), y = rand(0, s), h = rand(26, 46), n = 2 + Math.floor(Math.random() * 2);
+      for (let j = 0; j < n; j++) {
+        const lean = (j - (n - 1) / 2) * rand(5, 9) + rand(-3, 3);
+        stroke(x + lean * 0.15, y, x + lean, y - h * rand(0.7, 1), rand(2, 2.8));
+      }
+    }
+  });
+  hatchTex.colorSpace = THREE.NoColorSpace;
+  hatchTex.wrapS = hatchTex.wrapT = THREE.RepeatWrapping;
+  hatchTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const groundMat = flat({ a: '#2c1472', b: '#5424a0', c: '#c23cc0', axis: [0, 0, -1], from: 3, to: 13, cFrom: 15, cTo: 29, space: 'world', facets: false, map: groundTex });
   const groundCompile = groundMat.onBeforeCompile;
   groundMat.onBeforeCompile = (shader, r) => {
@@ -423,11 +458,36 @@ function start(stage) {
     shader.uniforms.uShadows = shadowUniform;
     shader.uniforms.uShadowDir = { value: new THREE.Vector2(SHADOW_DIR.x, SHADOW_DIR.z) };
     shader.uniforms.uPatch = { value: new THREE.Color('#c4b4e4') };
+    shader.uniforms.uHatch = { value: hatchTex };
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>
-        uniform vec4 uShadows[${MAX_SHADOWS}];
+      .replace('void main() {', `uniform vec4 uShadows[${MAX_SHADOWS}];
         uniform vec2 uShadowDir;
-        uniform vec3 uPatch;`)
+        uniform vec3 uPatch;
+        uniform sampler2D uHatch;
+        ${EDGE_GLSL}
+        float groundHatch(vec2 offset) {
+          vec2 huv = vec2(vFlatWorld.x, -vFlatWorld.z) / ${HATCH_TILE.toFixed(1)} + offset;
+          return smoothstep(0.35, 0.75, texture2D(uHatch, huv).r);
+        }
+        // Near field to mid field: a ragged line with a thin stippled fringe in front of it,
+        // plus the near field's tuft marks painted in the mid tone.
+        float groundNearMid() {
+          float z = vFlatWorld.z, e = edgeNear(vFlatWorld.x);
+          return max(stipple(smoothstep(-e - 0.3, -e + 0.02, -z)), groundHatch(vec2(0.0)));
+        }
+        // Mid field to far field, with sparser marks in the far tone across the mid field,
+        // kept off the dog's play area so it stays a clean flat stage.
+        float groundMidFar() {
+          float z = vFlatWorld.z, e1 = edgeNear(vFlatWorld.x), e2 = edgeFar(vFlatWorld.x);
+          float field = stipple(smoothstep(-e2 - 1.4, -e2 + 0.05, -z));
+          float midMarks = step(z, e1 - 0.4) * groundHatch(vec2(0.37, 0.61)) * step(0.0, sin(vFlatWorld.x * 0.8 + 1.0) + sin(vFlatWorld.z * 1.1));
+          vec2 play = step(vec2(${DOG_AREA.x0.toFixed(1)}, ${DOG_AREA.z0.toFixed(1)}), vFlatWorld.xz) * step(vFlatWorld.xz, vec2(${DOG_AREA.x1.toFixed(1)}, ${DOG_AREA.z1.toFixed(1)}));
+          midMarks *= 1.0 - play.x * play.y;
+          return max(field, midMarks);
+        }
+        void main() {`)
+      .replace('stipple(clamp(vFlatT, 0.0, 1.0))', 'groundNearMid()')
+      .replace('stipple(clamp(vFlatTC, 0.0, 1.0))', 'groundMidFar()')
       .replace('#include <map_fragment>', `vec3 groundBase = diffuseColor.rgb;
         #include <map_fragment>
         vec2 shadowSide = vec2(uShadowDir.y, -uShadowDir.x);
@@ -444,209 +504,136 @@ function start(stage) {
   const ground = new THREE.Mesh(groundGeo, groundMat);
   scene.add(ground);
 
-  // Grass: a tall meadow combed one way by the wind, with gusts rolling across it, seed heads
-  // that catch the sun and a scatter of small flowers. Every vertex carries aTip: 0 to 1 up a
-  // stalk, 2 on a seed head, 3 on a petal and 3.5 at a flower's heart.
+  // Grass: flat cut-paper clumps with zig-zag crowns, turned to face the viewer and laid
+  // in rows. Each row holds one tone of the ground, its crown tips stippled into the next
+  // tone up; the rows along the field lines are dense hedges that give each field a ragged
+  // top edge against the one behind it.
   const grassTime = { value: 0 };
   {
-    const WIND = new THREE.Vector2(1, 0.22).normalize();
-    const bladeBase = new THREE.Color(0.74, 0.74, 0.76), bladeTip = new THREE.Color(1.22, 1.18, 1.12);
-
-    function build(parts) {
-      const pos = [], col = [], tip = [], idx = [];
-      for (const part of parts) {
-        const o = pos.length / 3;
-        for (const v of part.verts) {
-          pos.push(v[0], v[1], v[2]);
-          const c = bladeBase.clone().lerp(bladeTip, Math.pow(Math.min(v[1], 1), 0.8));
-          col.push(c.r, c.g, c.b);
-          tip.push(v[3] ?? Math.min(v[1], 1));
-        }
-        for (const i of part.idx) idx.push(o + i);
+    function clumpGeo(spikes) {
+      const pos = [0, 0, 0], tip = [0], idx = [];
+      const pts = [[-0.5, 0]];
+      for (let i = 0; i < spikes; i++) {
+        const x0 = -0.5 + i / spikes, x1 = -0.5 + (i + 1) / spikes;
+        const apexX = lerp(x0, x1, rand(0.3, 0.7)) + rand(-0.05, 0.05);
+        const edgeFade = 1 - Math.pow(Math.abs(apexX) * 2, 2) * 0.45;
+        pts.push([apexX, rand(0.7, 1) * edgeFade]);
+        if (i < spikes - 1) pts.push([x1, rand(0.42, 0.6) * edgeFade]);
       }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
-      g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-      g.setAttribute('aTip', new THREE.Float32BufferAttribute(tip, 1));
-      g.setIndex(idx);
-      return g;
+      pts.push([0.5, 0]);
+      for (const [x, y] of pts) {
+        pos.push(x, y, 0);
+        tip.push(y);
+      }
+      for (let i = 1; i < pts.length; i++) idx.push(0, i, i + 1 > pts.length ? i : i + 1);
+      idx.length -= 3;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, i) => (i % 3 === 2 ? 1 : 0)), 3));
+      geo.setIndex(idx);
+      return geo;
     }
-    // A tapered ribbon up to `top`, with a slight curve of its own so the silhouette reads as a sabre.
-    function ribbon(width, top, segs) {
-      const verts = [], idx = [];
-      for (let i = 0; i <= segs; i++) {
-        const y = (i / segs) * top;
-        const w = width * Math.pow(1 - i / segs, 0.7);
-        const x = 0.06 * y * y, z = 0.08 * y * y;
-        if (i < segs) verts.push([x - w, y, z], [x + w, y, z]);
-        else verts.push([x, y, z]);
-      }
-      for (let i = 0; i < segs - 1; i++) {
-        const a = i * 2;
-        idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-      }
-      const last = (segs - 1) * 2;
-      idx.push(last, last + 1, last + 2);
-      return { verts, idx };
+
+    function clumpMat(body, crown) {
+      // Local y runs 0 at the root to 1 at the tallest spike; the crown tone takes over near the tips.
+      const mat = flat({ a: body, b: crown, axis: [0, 1, 0], from: 0.5, to: 0.85, facets: false });
+      mat.side = THREE.DoubleSide;
+      const flatCompile = mat.onBeforeCompile;
+      mat.onBeforeCompile = (shader, r) => {
+        flatCompile(shader, r);
+        shader.uniforms.uTime = grassTime;
+        shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>
+          #ifdef USE_INSTANCING
+            vec2 ip = vec2(instanceMatrix[3].x, instanceMatrix[3].z);
+          #else
+            vec2 ip = vec2(0.0);
+          #endif
+          float sway = sin(uTime * 1.3 + ip.x * 0.6 + ip.y * 0.4) * 0.6 + sin(uTime * 2.3 + ip.x * 1.1) * 0.25;
+          transformed.x += sway * 0.05 * position.y * position.y;`,
+        );
+      };
+      return mat;
     }
-    const bladeGeo = build([ribbon(0.07, 1, 6)]);
-    // Stalk plus a slender grain head, stacked from diamonds so the outline stays notched.
-    const headGeo = (() => {
-      const stalk = ribbon(0.022, 1, 5);
-      stalk.verts[stalk.verts.length - 1][0] -= 0.004;
-      const verts = [], idx = [];
-      const rows = [[0, 0.96], [0.032, 1.0], [0.042, 1.06], [0.036, 1.12], [0.024, 1.18], [0, 1.25]];
-      rows.forEach(([w, y]) => {
-        const x = 0.06 * y * y, z = 0.08 * y * y;
-        verts.push([x - w, y, z, 2], [x + w, y, z, 2]);
-      });
-      for (let i = 0; i < rows.length - 1; i++) {
-        const a = i * 2;
-        idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-      }
-      return build([stalk, { verts, idx }]);
-    })();
-    // A thin stem crowned by a five petal star, tipped toward the viewer.
-    const flowerGeo = (() => {
-      const stem = ribbon(0.018, 1, 3);
-      const verts = [[0.06, 1.02, 0.08, 3.5]], idx = [];
-      for (let i = 0; i < 10; i++) {
-        const a = (i / 10) * TAU + Math.PI / 2;
-        const r = i % 2 ? 0.085 : 0.12;
-        verts.push([0.06 + Math.cos(a) * r, 1.02 + Math.sin(a) * r * 0.87, 0.08 - Math.sin(a) * r * 0.5, 3]);
-        idx.push(0, 1 + i, 1 + ((i + 1) % 10));
-      }
-      return build([stem, { verts, idx }]);
-    })();
 
-    // Blades take the ground's colour where they stand, a little darker at the root and lighter at the tip.
-    const grassMat = flat({ a: '#3a1c84', b: '#642cb2', c: '#cc48cc', axis: [0, 0, -1], from: 3, to: 13, cFrom: 15, cTo: 29, space: 'world', facets: false, vertexColors: true });
-    grassMat.side = THREE.DoubleSide;
-    const flatCompile = grassMat.onBeforeCompile;
-    grassMat.onBeforeCompile = (shader, r) => {
-      flatCompile(shader, r);
-      shader.uniforms.uTime = grassTime;
-      shader.uniforms.uWind = { value: WIND };
-      shader.vertexShader = `uniform float uTime;
-        uniform vec2 uWind;
-        attribute float aTip;
-        attribute vec3 aFlower;
-        varying float vTip;
-        varying float vGust;
-        varying vec3 vFlower;
-        ` + shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
-        vTip = aTip;
-        vFlower = aFlower;
-        #ifdef USE_INSTANCING
-          vec2 ip = vec2(instanceMatrix[3].x, instanceMatrix[3].z);
-          mat3 im = mat3(instanceMatrix);
-        #else
-          vec2 ip = vec2(0.0);
-          mat3 im = mat3(1.0);
-        #endif
-        float seed = fract(sin(dot(ip, vec2(12.9898, 78.233))) * 43758.5453);
-        // Gust fronts: sharp crests travelling downwind, their line wobbling slowly.
-        float along = dot(ip, uWind);
-        float across = dot(ip, vec2(-uWind.y, uWind.x));
-        float front = along * 0.34 - uTime * 1.25 + sin(across * 0.21 + uTime * 0.23) * 1.3;
-        float gust = pow(0.5 + 0.5 * sin(front), 4.0) * (0.65 + 0.35 * sin(along * 0.07 - uTime * 0.31 + across * 0.05));
-        vGust = gust;
-        float bladeLen = length(im[1]);
-        float hn = max(position.y, 0.0);
-        float lean = 0.3 + 0.75 * gust + 0.07 * sin(uTime * (2.4 + seed) + seed * 6.28);
-        float bend = lean * pow(hn, 1.7) * bladeLen;
-        vec3 windWorld = vec3(uWind.x * bend, -0.42 * lean * lean * hn * hn * bladeLen, uWind.y * bend);
-        transformed += inverse(im) * windWorld;`,
-      );
-      shader.fragmentShader = `varying float vTip;
-        varying float vGust;
-        varying vec3 vFlower;
-        ` + shader.fragmentShader.replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
-        {
-          vec3 toSun = normalize(vFlatWorld - cameraPosition);
-          float sunF = pow(max(dot(toSun, uSunDir), 0.0), 5.0);
-          if (vTip > 2.9) {
-            // Petals keep their own colour, sinking into the far magenta; the heart glows orange.
-            float far = smoothstep(9.0, 26.0, -vFlatWorld.z);
-            vec3 petal = mix(vFlower, vec3(0.86, 0.34, 0.74), far * 0.55);
-            petal = mix(petal, vec3(1.0, 0.52, 0.22), stipple(smoothstep(3.2, 3.45, vTip)));
-            diffuseColor.rgb = mix(petal, vec3(1.0, 0.78, 0.6), stipple(sunF * 0.8) * 0.35);
-          } else if (vTip > 1.5) {
-            // Seed heads: warm grain, rimmed hot where they stand against the sun.
-            diffuseColor.rgb = mix(diffuseColor.rgb / max(vColor.rgb, vec3(0.01)), vec3(0.88, 0.34, 0.36), 0.6);
-            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.64, 0.42), stipple(0.2 + sunF * 1.1 + vGust * 0.3) * 0.75);
-          } else {
-            float up = smoothstep(0.55, 1.0, vTip);
-            // A gust presses the blades flat, flashing their pale undersides as it passes.
-            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.74, 0.42, 0.9), stipple(vGust * (0.3 + 0.7 * up) * 1.2) * 0.5);
-            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.6, 0.44), stipple(up * (0.1 + 0.9 * sunF)) * 0.55);
-          }
-        }`,
-      );
-    };
-
-    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+    const shapes = [clumpGeo(7), clumpGeo(9), clumpGeo(11)];
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
     const p = new THREE.Vector3(), sc = new THREE.Vector3();
-    const white = new THREE.Color(1, 1, 1);
-    // 0 in the dog's play area, rising to 1 a couple of metres outside it.
-    const openness = (x, z) => {
-      const dx = Math.max(DOG_AREA.x0 - x, x - DOG_AREA.x1, 0);
-      const dz = Math.max(DOG_AREA.z0 - z, (z - DOG_AREA.z1) * 0.55, 0);
-      return smoothstep(0.3, 2.8, Math.hypot(dx, dz));
-    };
-    // Meadow height: rolling patches, kept low in the play area and at the viewer's feet.
-    const meadowH = (x, z) => {
-      const patch = 0.5 + 0.5 * Math.sin(x * 0.55 + Math.sin(z * 0.4) * 1.7) * Math.cos(z * 0.47 - x * 0.2);
-      const tall = lerp(0.5, 0.9, patch);
-      const near = lerp(0.6, 1, smoothstep(-2.6, -6.5, z));
-      return lerp(0.2, tall * near, openness(x, z));
-    };
-    const place = (mesh, i, x, z, h, lean) => {
-      p.set(x, 0, z);
-      e.set(rand(-0.08, 0.08) - 0.06, -0.22 + rand(-0.45, 0.45), lean);
-      q.setFromEuler(e);
-      sc.set(rand(0.6, 0.95), h, h);
-      mesh.setMatrixAt(i, m.compose(p, q, sc));
-      mesh.setColorAt(i, white);
-    };
+    const inPlay = (x, z) => x > DOG_AREA.x0 - 0.8 && x < DOG_AREA.x1 + 0.8 && z > DOG_AREA.z0 - 0.5 && z < DOG_AREA.z1 + 1.2;
+    function addRow(mat, items) {
+      const perShape = shapes.map(() => []);
+      for (const it of items) perShape[Math.floor(Math.random() * shapes.length)].push(it);
+      perShape.forEach((list, s) => {
+        if (!list.length) return;
+        const mesh = new THREE.InstancedMesh(shapes[s], mat, list.length);
+        list.forEach(([x, z, w, h], i) => {
+          p.set(x, 0, z);
+          q.setFromAxisAngle(up, Math.atan2(VIEW_CAM_POS.x - x, VIEW_CAM_POS.z - z));
+          sc.set(w * (Math.random() < 0.5 ? -1 : 1), h, 1);
+          mesh.setMatrixAt(i, m.compose(p, q, sc));
+        });
+        mesh.frustumCulled = false;
+        scene.add(mesh);
+      });
+    }
 
-    const count = 9000, heads = 1400, flowers = 800;
-    const grass = new THREE.InstancedMesh(bladeGeo, grassMat, count);
-    const grain = new THREE.InstancedMesh(headGeo, grassMat, heads);
-    const bloom = new THREE.InstancedMesh(flowerGeo, grassMat, flowers);
-    const spot = () => [rand(-16, 12), rand(-26, -2.4)];
-    let k = 0;
-    while (k < count) {
-      const [tx, tz] = spot();
-      const tuftH = meadowH(tx, tz);
-      const blades = 4 + Math.floor(Math.random() * 4);
-      for (let b = 0; b < blades && k < count; b++, k++) {
-        place(grass, k, tx + rand(-0.09, 0.09), tz + rand(-0.09, 0.09), tuftH * rand(0.55, 1.1), rand(-0.12, 0.12));
-      }
+    // Foreground clumps: indigo bodies melting into the near field, violet crowns.
+    const fore = [];
+    for (let i = 0; i < 260; i++) {
+      const x = rand(-9, 9), z = rand(-6.6, -3.2);
+      if (z < EDGE_NEAR(x) + 0.4) continue;
+      const h = rand(0.18, 0.36) * lerp(1.25, 0.8, smoothstep(-3.2, -6.6, z));
+      fore.push([x, z, h * rand(1.3, 2.2), h]);
     }
-    for (let i = 0; i < heads; i++) {
-      let tx, tz;
-      do [tx, tz] = spot(); while (openness(tx, tz) * lerp(0.15, 1, smoothstep(-3, -9, tz)) < Math.random());
-      place(grain, i, tx, tz, meadowH(tx, tz) * rand(0.85, 1.15), rand(-0.1, 0.1));
+    // A front row of larger clumps toward the sides frames the view.
+    for (let i = 0; i < 70; i++) {
+      const x = rand(-7, 7), z = rand(-5.2, -3.4);
+      if (Math.abs(x) < 1.3) continue;
+      const h = rand(0.34, 0.6);
+      fore.push([x, z, h * rand(1.5, 2.3), h]);
     }
-    const petals = ['#ffb080', '#ff8a52', '#ffcce4', '#ff9cc8'].map((h) => new THREE.Color(h));
-    const flowerCol = new Float32Array(flowers * 3);
-    for (let i = 0; i < flowers; i++) {
-      let tx, tz;
-      do [tx, tz] = spot(); while (Math.random() > (0.35 + 0.65 * openness(tx, tz)) * smoothstep(-4, -8, tz));
-      place(bloom, i, tx, tz, Math.max(0.12, meadowH(tx, tz) * rand(0.55, 0.9)), rand(-0.1, 0.1));
-      petals[Math.floor(Math.random() * petals.length)].toArray(flowerCol, i * 3);
+    addRow(clumpMat('#2c1472', '#5424a0'), fore);
+
+    // The near field's ragged top edge: a dense indigo hedge on the field line, kept low
+    // where the dog plays behind it.
+    const hedgeNear = [];
+    for (let x = -22; x < 18; x += rand(0.18, 0.34)) {
+      const z = EDGE_NEAR(x) + rand(-0.05, 0.12);
+      const low = x > DOG_AREA.x0 - 0.8 && x < DOG_AREA.x1 + 0.8;
+      const h = low ? rand(0.1, 0.17) : rand(0.2, 0.4);
+      hedgeNear.push([x, z, h * rand(1.6, 2.6), h]);
     }
-    bloom.geometry.setAttribute('aFlower', new THREE.InstancedBufferAttribute(flowerCol, 3));
-    for (const mesh of [grass, grain, bloom]) {
-      mesh.frustumCulled = false;
-      scene.add(mesh);
+    addRow(clumpMat('#2c1472', '#2c1472'), hedgeNear);
+
+    // Mid field clumps: violet with magenta crowns, sparse, clear of the dog's play area.
+    const mid = [];
+    for (let i = 0; i < 420; i++) {
+      const x = rand(-24, 20), z = rand(-18, -8);
+      if (z > EDGE_NEAR(x) - 0.5 || z < EDGE_FAR(x) + 0.8 || inPlay(x, z)) continue;
+      const h = rand(0.18, 0.34);
+      mid.push([x, z, h * rand(1.4, 2.2), h]);
     }
+    addRow(clumpMat('#5424a0', '#c23cc0'), mid);
+
+    // The mid field's ragged top edge against the magenta far field.
+    const hedgeFar = [];
+    for (let x = -40; x < 34; x += rand(0.35, 0.7)) {
+      const z = EDGE_FAR(x) + rand(-0.1, 0.25);
+      const h = rand(0.28, 0.55);
+      hedgeFar.push([x, z, h * rand(1.6, 2.6), h]);
+    }
+    addRow(clumpMat('#5424a0', '#5424a0'), hedgeFar);
+
+    // A few magenta clumps scattered across the far field.
+    const far = [];
+    for (let i = 0; i < 90; i++) {
+      const x = rand(-45, 40), z = rand(-34, -20);
+      if (z > EDGE_FAR(x) - 1) continue;
+      const h = rand(0.35, 0.7);
+      far.push([x, z, h * rand(1.5, 2.4), h]);
+    }
+    addRow(clumpMat('#c23cc0', '#c23cc0'), far);
   }
 
   // Trees and hills in the middle and far distance.
