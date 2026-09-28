@@ -262,6 +262,7 @@ function start(stage) {
         .replace('#include <opaque_fragment>', `outgoingLight = mix(outgoingLight, uFlashTint, uFlash);
           #include <opaque_fragment>`);
     };
+    m.userData.flat = uniforms;
     return m;
   }
 
@@ -653,7 +654,7 @@ function start(stage) {
   const hoseRamp = new Float32Array(hoseUv.count);
   for (let i = 0; i < hoseUv.count; i++) hoseRamp[i] = hoseUv.getX(i);
   hoseGeo.setAttribute('aRamp', new THREE.BufferAttribute(hoseRamp, 1));
-  const hose = new THREE.Mesh(hoseGeo, flat({ a: '#e85a2a', b: '#ee9ba8', space: 'attr', from: 0.8, to: 0.985, hard: true }));
+  const hose = new THREE.Mesh(hoseGeo, flat({ a: '#b98ac4', b: '#ee9ba8', space: 'world', hard: true }));
   hose.frustumCulled = false;
   scene.add(hose);
 
@@ -1524,6 +1525,7 @@ function start(stage) {
 
   const SHOULDER_LOCAL = new THREE.Vector3(0.24, -0.36, -0.12);
   const hoseTmp = new THREE.Vector3();
+  const HOSE_RAMP_AXIS = new THREE.Vector3(-0.95, 0.3, 0).normalize();
   function updateHose() {
     const [p0, p1, p2, p3] = [hoseCurve.v0, hoseCurve.v1, hoseCurve.v2, hoseCurve.v3];
     p0.copy(SHOULDER_LOCAL).applyQuaternion(baseQuat).add(VIEW_CAM_POS);
@@ -1539,6 +1541,15 @@ function start(stage) {
     hose.geometry.attributes.position.needsUpdate = true;
     hose.geometry.attributes.normal.needsUpdate = true;
     next.dispose();
+
+    // The arm's colour runs along a tilted screen direction, so its bands cross the arm at an
+    // angle. The ramp spans the visible stretch of forearm, red below and pink toward the hand.
+    const ramp = hose.material.userData.flat;
+    ramp.uFlatAxis.value.copy(HOSE_RAMP_AXIS).applyQuaternion(camera.quaternion);
+    ramp.uFlatRange.value.set(
+      hoseCurve.getPoint(0.8).dot(ramp.uFlatAxis.value),
+      hoseCurve.getPoint(0.985).dot(ramp.uFlatAxis.value),
+    );
   }
 
   const prevQ = new THREE.Quaternion();
@@ -1677,21 +1688,16 @@ function start(stage) {
 
   // Score: how centred the dog is (radial distance of its projected centre, 0 at 0.9 NDC or off-frame),
   // weighted by how much of the frame it fills, minus a penalty for hand shake at the moment of capture.
+  // Stand-in for the app's aesthetics score: any frame with the dog in it is a keeper, a little
+  // better when centred; frames that miss the dog are the ones left out.
   function scoreShot(cam, shake) {
     dog.body.getWorldPosition(tmpV);
-    const dist = cam.position.distanceTo(tmpV);
     tmpV2.copy(tmpV).applyMatrix4(cam.matrixWorldInverse);
-    let score = 0;
-    if (tmpV2.z < 0) {
-      tmpV.project(cam);
-      if (Math.abs(tmpV.x) <= 1 && Math.abs(tmpV.y) <= 1) {
-        const centred = Math.max(0, 1 - Math.hypot(tmpV.x, tmpV.y) / 0.9);
-        const frac = 0.85 / (dist * 2 * Math.tan(deg(cam.fov / 2)));
-        const size = Math.sqrt(clamp(frac / 0.2, 0, 1));
-        score = Math.pow(centred, 0.8) * (0.55 + 0.45 * size);
-      }
-    }
-    return score - Math.min(0.35, shake * 1.2) + (Math.random() - 0.5) * 0.08;
+    if (tmpV2.z >= 0) return 0.1;
+    tmpV.project(cam);
+    if (Math.abs(tmpV.x) > 0.95 || Math.abs(tmpV.y) > 0.95) return 0.1;
+    const centred = Math.max(0, 1 - Math.hypot(tmpV.x, tmpV.y));
+    return 0.6 + 0.35 * centred - Math.min(0.1, shake * 0.3);
   }
 
   function vivid([r, gg, b]) {
