@@ -52,55 +52,69 @@ final class FanLayoutTests: XCTestCase {
         XCTAssertEqual(FanLayout.delay(for: 4), 0.12, accuracy: 1e-9)
     }
 
-    func testShown_smallSessionShowsEveryPhoto() {
-        XCTAssertEqual(FanLayout.shownIndices(count: 5, kept: [false, true, false, true, false]), [0, 1, 2, 3, 4])
+    private func verdict(_ kept: [Bool], scores: [Float]? = nil) -> FanLayout.Verdict {
+        FanLayout.Verdict(kept: kept, scores: scores ?? kept.map { _ in 0.5 })
     }
 
-    func testShown_withoutAVerdictShowsTheFirstSeven() {
-        XCTAssertEqual(FanLayout.shownIndices(count: 10, kept: nil), Array(0..<7))
+    func testPlan_withoutAVerdictSkipsTheFan() {
+        XCTAssertEqual(FanLayout.plan(for: nil), .skip)
     }
 
-    func testShown_prefersKeptPhotosThenFillsWithDropsInCaptureOrder() {
-        let kept = [false, true, false, true, false, false, false, false, true, false]
-        XCTAssertEqual(FanLayout.shownIndices(count: 10, kept: kept), [0, 1, 2, 3, 4, 5, 8])
+    func testPlan_showsOnlyKeptPhotosInCaptureOrder() {
+        XCTAssertEqual(FanLayout.plan(for: verdict([true, false, true, true, false])), .fan([0, 2, 3]))
     }
 
-    func testShown_manyKeepersLeaveNoRoomForDrops() {
-        let kept = (0..<12).map { $0 % 4 != 0 }
-        XCTAssertEqual(FanLayout.shownIndices(count: 12, kept: kept), [1, 2, 3, 5, 6, 7, 9])
+    func testPlan_neverShowsADroppedPhoto() {
+        for mask in 1..<(1 << 10) {
+            let kept = (0..<10).map { mask & (1 << $0) != 0 }
+            guard case .fan(let shown) = FanLayout.plan(for: verdict(kept)) else {
+                return XCTFail("A verdict with keepers should fan")
+            }
+            XCTAssertTrue(shown.allSatisfy { kept[$0] }, "\(kept)")
+            XCTAssertEqual(shown, shown.sorted())
+            XCTAssertEqual(shown.count, min(kept.filter { $0 }.count, FanLayout.maxPhotos))
+        }
     }
 
-    func testKeptFlags_withoutAVerdictKeepEverything() {
-        XCTAssertEqual(FanLayout.keptFlags(shown: [0, 2, 3], verdict: nil), [true, true, true])
+    func testPlan_withNoKeptPreviewSkipsTheFan() {
+        XCTAssertEqual(FanLayout.plan(for: verdict([false, false])), .skip)
     }
 
-    func testKeptFlags_followTheVerdictForTheShownPhotos() {
-        XCTAssertEqual(FanLayout.keptFlags(shown: [0, 2, 3], verdict: [true, true, false, true]), [true, false, true])
+    func testPlan_capsAtSevenChoosingTheBestScoredInCaptureOrder() {
+        let kept = Array(repeating: true, count: 10)
+        let scores: [Float] = [0.5, 0.9, 0.4, 0.8, 0.95, 0.45, 0.7, 0.6, 0.41, 0.85]
+        XCTAssertEqual(FanLayout.plan(for: verdict(kept, scores: scores)), .fan([0, 1, 3, 4, 6, 7, 9]))
     }
 
-    func testKeptFlags_neverDropEveryShownPhoto() {
-        XCTAssertEqual(FanLayout.keptFlags(shown: [1, 2], verdict: [true, false, false]), [true, true],
-                       "Something has to reach the heart")
+    func testPlan_capsAtSevenIgnoringTheScoresOfDroppedPhotos() {
+        let kept = [true, false, true, true, true, true, true, true, true, true]
+        let scores: [Float] = [0.5, 1.0, 0.4, 0.8, 0.95, 0.45, 0.7, 0.6, 0.41, 0.85]
+        XCTAssertEqual(FanLayout.plan(for: verdict(kept, scores: scores)), .fan([0, 3, 4, 5, 6, 7, 9]))
     }
 
-    func testVerdictDeadline_isShort() {
-        XCTAssertLessThanOrEqual(FanLayout.verdictDeadline, .seconds(0.5))
-        XCTAssertLessThanOrEqual(FanLayout.fanVerdictGrace, .seconds(0.25))
+    func testPlan_capsAtTheFirstSevenKeptWhenScoresDontLineUp() {
+        let kept = Array(repeating: true, count: 9)
+        XCTAssertEqual(FanLayout.plan(for: FanLayout.Verdict(kept: kept, scores: [])), .fan(Array(0..<7)))
+    }
+
+    func testVerdictDeadline_givesScoringABeatAndAHalf() {
+        XCTAssertEqual(FanLayout.verdictDeadline, .seconds(1.5))
     }
 
     @MainActor
     func testAwaitVerdict_returnsAsSoonAsItIsKnown() async {
         let start = ContinuousClock.now
-        let verdict = await FanLayout.awaitVerdict(within: .seconds(2)) { [true, false] }
-        XCTAssertEqual(verdict, [true, false])
+        let known = verdict([true, false])
+        let answer = await FanLayout.awaitVerdict(within: .seconds(2)) { known }
+        XCTAssertEqual(answer, known)
         XCTAssertLessThan(ContinuousClock.now - start, .milliseconds(100))
     }
 
     @MainActor
     func testAwaitVerdict_givesUpAtTheDeadline() async {
         let start = ContinuousClock.now
-        let verdict = await FanLayout.awaitVerdict(within: .milliseconds(60)) { nil }
-        XCTAssertNil(verdict)
+        let answer = await FanLayout.awaitVerdict(within: .milliseconds(60)) { nil as FanLayout.Verdict? }
+        XCTAssertNil(answer)
         XCTAssertGreaterThanOrEqual(ContinuousClock.now - start, .milliseconds(60))
         XCTAssertLessThan(ContinuousClock.now - start, .milliseconds(500))
     }

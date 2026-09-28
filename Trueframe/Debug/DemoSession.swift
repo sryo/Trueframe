@@ -107,7 +107,7 @@ final class DemoProximitySource: ProximityEventSource {
     }
 }
 
-/// Drops every third photo, starting with the second, so the demo shows misses.
+/// Drops every third photo, starting with the second, so the demo fans only some.
 private struct DemoScorer: PhotoScoring {
     func scores(for images: [UIImage?]) async -> [Float] {
         images.indices.map { $0 % 3 == 1 ? 0.1 : 0.9 }

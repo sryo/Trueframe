@@ -15,6 +15,8 @@ final class SessionCoordinator {
     private(set) var keptCount: Int?
     /// Whether each of `sessionPreviews` will be saved; nil until scoring answers.
     private(set) var keptPreviews: [Bool]?
+    /// Each of `sessionPreviews`' score, published with `keptPreviews`.
+    private(set) var previewScores: [Float]?
 
     let captureSettings = CaptureSettings()
     let cameraSelectionSettings = CameraSelectionSettings()
@@ -106,6 +108,7 @@ final class SessionCoordinator {
         keptCount = nil
         sessionPreviews = []
         keptPreviews = nil
+        previewScores = nil
         curation = nil
 
         let configuration = currentConfiguration()
@@ -180,7 +183,7 @@ final class SessionCoordinator {
         } else {
             sessionPreviews = previews
             phase = .celebrating
-            // Scored now, so the animation can show what's dropped
+            // Scored now, so the animation can show only what's kept
             let session = session
             curation = Task { await curate(entries, session: session) }
         }
@@ -229,7 +232,9 @@ final class SessionCoordinator {
         let selected = CurationPolicy.selectionIndices(scores: scores)
         let kept = Set(selected)
         if session == self.session {
-            keptPreviews = entries.indices.filter { entries[$0].preview != nil }.map(kept.contains)
+            let shown = entries.indices.filter { entries[$0].preview != nil }
+            previewScores = shown.map { scores[$0] }
+            keptPreviews = shown.map(kept.contains)
         }
         return Curation(entries: entries, selected: selected)
     }
@@ -259,6 +264,7 @@ final class SessionCoordinator {
         guard session == self.session else { return }
         sessionPreviews = []
         keptPreviews = nil
+        previewScores = nil
         curation = nil
         phase = .idle
         await engine.prewarm(currentConfiguration())

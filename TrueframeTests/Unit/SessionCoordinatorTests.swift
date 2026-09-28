@@ -383,6 +383,17 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(sut.keptPreviews, [true, false, true])
     }
 
+    func testVerdict_publishesTheScoresOfThePreviewsShown() async {
+        await scorer.setScores([0.9, 0.3, 0.1])
+        let unseen = CapturedAsset(id: UUID(), fileData: Data([0x01]), preview: nil, isProxy: false, capturedAt: .now)
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset(), unseen, FakeCaptureEngine.makeAsset()])
+
+        await waitUntil { self.sut.previewScores != nil }
+
+        XCTAssertEqual(sut.previewScores, [0.9, 0.1])
+        XCTAssertEqual(sut.keptPreviews, [true, false])
+    }
+
     func testVerdict_isUnknownUntilScoringAnswers() async {
         await scorer.holdScores()
         await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])

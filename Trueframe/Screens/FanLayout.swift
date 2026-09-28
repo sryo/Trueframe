@@ -23,35 +23,48 @@ enum FanLayout {
     static let stagger: TimeInterval = 0.03
     static let hold: Duration = .seconds(0.7)
 
-    /// How long a session too big to fan whole waits to learn its keepers.
-    static let fanVerdictGrace: Duration = .seconds(0.2)
-    /// How long the collapse waits past the hold for curation to say what's dropped.
-    static let verdictDeadline: Duration = .seconds(0.5)
-
-    /// Which photos fan out, in capture order: kept ones first when there are
-    /// too many, then drops, so some misses can still show.
-    static func shownIndices(count: Int, kept: [Bool]?) -> [Int] {
-        guard count > maxPhotos, let kept, kept.count == count else { return Array(0..<min(count, maxPhotos)) }
-        let keepers = (0..<count).filter { kept[$0] }
-        let drops = (0..<count).filter { !kept[$0] }
-        return Array((keepers + drops).prefix(maxPhotos)).sorted()
+    /// What curation decided, one entry per preview.
+    struct Verdict: Equatable, Sendable {
+        var kept: [Bool]
+        var scores: [Float]
     }
 
-    /// Whether each shown photo reaches the heart. Without a verdict, or with
-    /// none of the shown kept, they all do: the heart has to be fed to burst.
-    static func keptFlags(shown: [Int], verdict: [Bool]?) -> [Bool] {
-        let all = Array(repeating: true, count: shown.count)
-        guard let verdict else { return all }
-        let flags = shown.map { $0 < verdict.count ? verdict[$0] : true }
-        return flags.contains(true) ? flags : all
+    enum Plan: Equatable {
+        /// Nothing judged in time, or nothing to show: straight home.
+        case skip
+        /// Indices into the previews, in capture order.
+        case fan([Int])
+    }
+
+    /// How long from the end of a session the fan waits to learn what's kept.
+    /// Nothing is shown before then, since an unjudged photo might be dropped.
+    static let verdictDeadline: Duration = .seconds(1.5)
+
+    /// Only kept photos fan out, in capture order. Past the fan's size, the
+    /// best scored win.
+    static func plan(for verdict: Verdict?) -> Plan {
+        guard let verdict else { return .skip }
+        let keepers = verdict.kept.indices.filter { verdict.kept[$0] }
+        guard !keepers.isEmpty else { return .skip }
+        guard keepers.count > maxPhotos else { return .fan(keepers) }
+        guard verdict.scores.count == verdict.kept.count else { return .fan(Array(keepers.prefix(maxPhotos))) }
+        // Stable on ties, so earlier captures win them
+        let best = keepers.enumerated()
+            .sorted { lhs, rhs in
+                let (a, b) = (verdict.scores[lhs.element], verdict.scores[rhs.element])
+                return a != b ? a > b : lhs.offset < rhs.offset
+            }
+            .prefix(maxPhotos)
+            .map(\.element)
+        return .fan(best.sorted())
     }
 
     /// The verdict once known, or nil if it isn't by the deadline.
     @MainActor
-    static func awaitVerdict(within deadline: Duration, read: @MainActor () -> [Bool]?) async -> [Bool]? {
+    static func awaitVerdict<Answer>(within deadline: Duration, read: @MainActor () -> Answer?) async -> Answer? {
         let end = ContinuousClock.now + deadline
         while ContinuousClock.now < end, !Task.isCancelled {
-            if let verdict = read() { return verdict }
+            if let answer = read() { return answer }
             try? await Task.sleep(for: .milliseconds(16))
         }
         return read()
