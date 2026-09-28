@@ -29,7 +29,7 @@ extension HeartbeatKeyframes.Step {
 /// The wordmark heart glyph, shared so a session's heart covers the home one exactly.
 struct HeartGlyph: View {
     /// Settles the glyph onto the wordmark's baseline; applied outside the anchored frame.
-    static let baselineOffset: CGFloat = 1
+    nonisolated static let baselineOffset: CGFloat = 1
 
     var body: some View {
         Text("♥")
@@ -37,9 +37,16 @@ struct HeartGlyph: View {
     }
 }
 
+extension CGRect {
+    /// The heart's resting spot, when this is its anchored frame.
+    var heartCenter: CGPoint {
+        CGPoint(x: midX, y: midY + HeartGlyph.baselineOffset)
+    }
+}
+
 extension View {
     /// Centers the view on the heart's resting spot, in the coordinate space `frame` was resolved in.
     func placedOnHeart(_ frame: CGRect) -> some View {
-        position(x: frame.midX, y: frame.midY + HeartGlyph.baselineOffset)
+        position(frame.heartCenter)
     }
 }

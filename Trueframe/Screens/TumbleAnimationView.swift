@@ -52,9 +52,12 @@ struct TumbleAnimationView: View {
 
     private var slots: [FanLayout.Slot] { FanLayout.slots(count: shown.count) }
 
+    private var center: CGPoint {
+        CGPoint(x: canvas.width / 2, y: canvas.height / 2)
+    }
+
     private var heart: CGPoint {
-        heartFrame.map { CGPoint(x: $0.midX, y: $0.midY + HeartGlyph.baselineOffset) }
-            ?? CGPoint(x: canvas.width / 2, y: canvas.height / 2)
+        heartFrame?.heartCenter ?? center
     }
 
     var body: some View {
@@ -96,7 +99,6 @@ struct TumbleAnimationView: View {
     }
 
     private func pose(for index: Int, since: Double?) -> PhotoPose {
-        let center = CGPoint(x: canvas.width / 2, y: canvas.height / 2)
         let slot = slots[index]
         let fanned = CGPoint(x: center.x + slot.offset.width, y: center.y + slot.offset.height)
         if let since {
@@ -150,7 +152,7 @@ struct TumbleAnimationView: View {
         if glow > 0 {
             let r = BurstField.glowRadius
             context.fill(
-                Path(ellipseIn: CGRect(x: heart.x - r, y: heart.y - r, width: 2 * r, height: 2 * r)),
+                circle(at: heart, radius: r),
                 with: .radialGradient(
                     Gradient(colors: [.white.opacity(glow), .white.opacity(0)]),
                     center: heart, startRadius: 0, endRadius: r
@@ -165,18 +167,22 @@ struct TumbleAnimationView: View {
             let r = BurstField.radius(of: spark, at: t)
             let tint = tints.isEmpty ? Color.white : tints[index % tints.count]
             context.fill(
-                Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: 2 * r, height: 2 * r)),
+                circle(at: p, radius: r),
                 with: .color(tint.opacity(opacity))
             )
         }
 
         if let ring = BurstField.ring(at: t, cover: BurstField.cover(from: heart, in: size)) {
             context.stroke(
-                Path(ellipseIn: CGRect(x: heart.x - ring.radius, y: heart.y - ring.radius, width: 2 * ring.radius, height: 2 * ring.radius)),
+                circle(at: heart, radius: ring.radius),
                 with: .color(.white.opacity(ring.opacity)),
                 lineWidth: ring.lineWidth
             )
         }
+    }
+
+    private func circle(at center: CGPoint, radius r: CGFloat) -> Path {
+        Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: 2 * r, height: 2 * r))
     }
 
     private func play() async {
@@ -216,9 +222,7 @@ struct TumbleAnimationView: View {
         guard !Task.isCancelled else { return }
 
         collapsing = true
-        while clock.start == nil, !Task.isCancelled {
-            try? await Task.sleep(for: .milliseconds(8))
-        }
+        await clock.started.wait()
         guard let start = clock.start else { return }
         try? await Task.sleep(for: .seconds(HeartCollapse.handoff - Date.now.timeIntervalSince(start)))
         guard !Task.isCancelled else { return }
@@ -254,9 +258,13 @@ struct TumbleAnimationView: View {
 /// frame can't skip the photos partway down.
 private final class CollapseClock {
     private(set) var start: Date?
+    let started = ResumeOnce()
 
     func elapsed(at date: Date) -> Double {
-        if start == nil { start = date }
+        if start == nil {
+            start = date
+            started.resume()
+        }
         return date.timeIntervalSince(start ?? date)
     }
 }
@@ -270,19 +278,6 @@ private struct PhotoPose: ViewModifier {
     let stretchAxis: Angle
     let opacity: Double
 
-    init(position: CGPoint, rotation: Angle, scaleX: CGFloat, scaleY: CGFloat, stretchAxis: Angle, opacity: Double) {
-        self.position = position
-        self.rotation = rotation
-        self.scaleX = scaleX
-        self.scaleY = scaleY
-        self.stretchAxis = stretchAxis
-        self.opacity = opacity
-    }
-
-    init(position: CGPoint, rotation: Angle, scale: CGFloat, opacity: Double) {
-        self.init(position: position, rotation: rotation, scaleX: scale, scaleY: scale, stretchAxis: .zero, opacity: opacity)
-    }
-
     func body(content: Content) -> some View {
         content
             .rotationEffect(rotation - stretchAxis)
@@ -290,5 +285,11 @@ private struct PhotoPose: ViewModifier {
             .rotationEffect(stretchAxis)
             .opacity(opacity)
             .position(position)
+    }
+}
+
+private extension PhotoPose {
+    init(position: CGPoint, rotation: Angle, scale: CGFloat, opacity: Double) {
+        self.init(position: position, rotation: rotation, scaleX: scale, scaleY: scale, stretchAxis: .zero, opacity: opacity)
     }
 }

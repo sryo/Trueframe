@@ -61,10 +61,10 @@ enum FanLayout {
 
     /// The verdict once known, or nil if it isn't by the deadline.
     @MainActor
-    static func awaitVerdict<Answer>(within deadline: Duration, read: @MainActor () -> Answer?) async -> Answer? {
+    static func awaitVerdict(within deadline: Duration, read: @MainActor () -> Verdict?) async -> Verdict? {
         let end = ContinuousClock.now + deadline
         while ContinuousClock.now < end, !Task.isCancelled {
-            if let answer = read() { return answer }
+            if let verdict = read() { return verdict }
             try? await Task.sleep(for: .milliseconds(16))
         }
         return read()

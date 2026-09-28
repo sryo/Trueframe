@@ -112,7 +112,7 @@ final class FanLayoutTests: XCTestCase {
     @MainActor
     func testAwaitVerdict_givesUpAtTheDeadline() async {
         let start = ContinuousClock.now
-        let answer = await FanLayout.awaitVerdict(within: .milliseconds(60)) { nil as FanLayout.Verdict? }
+        let answer = await FanLayout.awaitVerdict(within: .milliseconds(60)) { nil }
         XCTAssertNil(answer)
         XCTAssertGreaterThanOrEqual(ContinuousClock.now - start, .milliseconds(60))
         XCTAssertLessThan(ContinuousClock.now - start, .milliseconds(500))
