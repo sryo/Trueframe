@@ -444,38 +444,81 @@ function start(stage) {
   const ground = new THREE.Mesh(groundGeo, groundMat);
   scene.add(ground);
 
-  // Grass: tapered blades in tufts, swaying in the vertex shader.
+  // Grass: a tall meadow combed one way by the wind, with gusts rolling across it, seed heads
+  // that catch the sun and a scatter of small flowers. Every vertex carries aTip: 0 to 1 up a
+  // stalk, 2 on a seed head, 3 on a petal and 3.5 at a flower's heart.
   const grassTime = { value: 0 };
   {
-    const segs = 4;
-    const bladeBase = new THREE.Color(0.8, 0.8, 0.8), bladeTip = new THREE.Color(1.25, 1.22, 1.1);
-    const pos = [], col = [], nor = [], idx = [];
-    for (let i = 0; i <= segs; i++) {
-      const y = i / segs;
-      const w = 0.06 * Math.pow(1 - y, 0.8);
-      const z = y * y * 0.18;
-      const c = bladeBase.clone().lerp(bladeTip, Math.pow(y, 0.8));
-      if (i < segs) {
-        pos.push(-w, y, z, w, y, z);
-        col.push(c.r, c.g, c.b, c.r, c.g, c.b);
-        nor.push(0, 1, 0, 0, 1, 0);
-      } else {
-        pos.push(0, y, z);
-        col.push(c.r, c.g, c.b);
-        nor.push(0, 1, 0);
+    const WIND = new THREE.Vector2(1, 0.22).normalize();
+    const bladeBase = new THREE.Color(0.74, 0.74, 0.76), bladeTip = new THREE.Color(1.22, 1.18, 1.12);
+
+    function build(parts) {
+      const pos = [], col = [], tip = [], idx = [];
+      for (const part of parts) {
+        const o = pos.length / 3;
+        for (const v of part.verts) {
+          pos.push(v[0], v[1], v[2]);
+          const c = bladeBase.clone().lerp(bladeTip, Math.pow(Math.min(v[1], 1), 0.8));
+          col.push(c.r, c.g, c.b);
+          tip.push(v[3] ?? Math.min(v[1], 1));
+        }
+        for (const i of part.idx) idx.push(o + i);
       }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      g.setAttribute('aTip', new THREE.Float32BufferAttribute(tip, 1));
+      g.setIndex(idx);
+      return g;
     }
-    for (let i = 0; i < segs - 1; i++) {
-      const a = i * 2;
-      idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    // A tapered ribbon up to `top`, with a slight curve of its own so the silhouette reads as a sabre.
+    function ribbon(width, top, segs) {
+      const verts = [], idx = [];
+      for (let i = 0; i <= segs; i++) {
+        const y = (i / segs) * top;
+        const w = width * Math.pow(1 - i / segs, 0.7);
+        const x = 0.06 * y * y, z = 0.08 * y * y;
+        if (i < segs) verts.push([x - w, y, z], [x + w, y, z]);
+        else verts.push([x, y, z]);
+      }
+      for (let i = 0; i < segs - 1; i++) {
+        const a = i * 2;
+        idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+      const last = (segs - 1) * 2;
+      idx.push(last, last + 1, last + 2);
+      return { verts, idx };
     }
-    const last = (segs - 1) * 2;
-    idx.push(last, last + 1, last + 2);
-    const bladeGeo = new THREE.BufferGeometry();
-    bladeGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    bladeGeo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-    bladeGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    bladeGeo.setIndex(idx);
+    const bladeGeo = build([ribbon(0.07, 1, 6)]);
+    // Stalk plus a slender grain head, stacked from diamonds so the outline stays notched.
+    const headGeo = (() => {
+      const stalk = ribbon(0.022, 1, 5);
+      stalk.verts[stalk.verts.length - 1][0] -= 0.004;
+      const verts = [], idx = [];
+      const rows = [[0, 0.96], [0.032, 1.0], [0.042, 1.06], [0.036, 1.12], [0.024, 1.18], [0, 1.25]];
+      rows.forEach(([w, y]) => {
+        const x = 0.06 * y * y, z = 0.08 * y * y;
+        verts.push([x - w, y, z, 2], [x + w, y, z, 2]);
+      });
+      for (let i = 0; i < rows.length - 1; i++) {
+        const a = i * 2;
+        idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+      return build([stalk, { verts, idx }]);
+    })();
+    // A thin stem crowned by a five petal star, tipped toward the viewer.
+    const flowerGeo = (() => {
+      const stem = ribbon(0.018, 1, 3);
+      const verts = [[0.06, 1.02, 0.08, 3.5]], idx = [];
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * TAU + Math.PI / 2;
+        const r = i % 2 ? 0.085 : 0.12;
+        verts.push([0.06 + Math.cos(a) * r, 1.02 + Math.sin(a) * r * 0.87, 0.08 - Math.sin(a) * r * 0.5, 3]);
+        idx.push(0, 1 + i, 1 + ((i + 1) % 10));
+      }
+      return build([stem, { verts, idx }]);
+    })();
 
     // Blades take the ground's colour where they stand, a little darker at the root and lighter at the tip.
     const grassMat = flat({ a: '#3a1c84', b: '#642cb2', c: '#cc48cc', axis: [0, 0, -1], from: 3, to: 13, cFrom: 15, cTo: 29, space: 'world', facets: false, vertexColors: true });
@@ -484,41 +527,126 @@ function start(stage) {
     grassMat.onBeforeCompile = (shader, r) => {
       flatCompile(shader, r);
       shader.uniforms.uTime = grassTime;
-      shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace(
+      shader.uniforms.uWind = { value: WIND };
+      shader.vertexShader = `uniform float uTime;
+        uniform vec2 uWind;
+        attribute float aTip;
+        attribute vec3 aFlower;
+        varying float vTip;
+        varying float vGust;
+        varying vec3 vFlower;
+        ` + shader.vertexShader.replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
+        vTip = aTip;
+        vFlower = aFlower;
         #ifdef USE_INSTANCING
           vec2 ip = vec2(instanceMatrix[3].x, instanceMatrix[3].z);
+          mat3 im = mat3(instanceMatrix);
         #else
           vec2 ip = vec2(0.0);
+          mat3 im = mat3(1.0);
         #endif
-        float sway = sin(uTime * 1.6 + ip.x * 0.7 + ip.y * 0.45) * 0.6 + sin(uTime * 2.9 + ip.x * 1.3) * 0.25;
-        transformed.x += sway * 0.12 * position.y * position.y;`,
+        float seed = fract(sin(dot(ip, vec2(12.9898, 78.233))) * 43758.5453);
+        // Gust fronts: sharp crests travelling downwind, their line wobbling slowly.
+        float along = dot(ip, uWind);
+        float across = dot(ip, vec2(-uWind.y, uWind.x));
+        float front = along * 0.34 - uTime * 1.25 + sin(across * 0.21 + uTime * 0.23) * 1.3;
+        float gust = pow(0.5 + 0.5 * sin(front), 4.0) * (0.65 + 0.35 * sin(along * 0.07 - uTime * 0.31 + across * 0.05));
+        vGust = gust;
+        float bladeLen = length(im[1]);
+        float hn = max(position.y, 0.0);
+        float lean = 0.3 + 0.75 * gust + 0.07 * sin(uTime * (2.4 + seed) + seed * 6.28);
+        float bend = lean * pow(hn, 1.7) * bladeLen;
+        vec3 windWorld = vec3(uWind.x * bend, -0.42 * lean * lean * hn * hn * bladeLen, uWind.y * bend);
+        transformed += inverse(im) * windWorld;`,
+      );
+      shader.fragmentShader = `varying float vTip;
+        varying float vGust;
+        varying vec3 vFlower;
+        ` + shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          vec3 toSun = normalize(vFlatWorld - cameraPosition);
+          float sunF = pow(max(dot(toSun, uSunDir), 0.0), 5.0);
+          if (vTip > 2.9) {
+            // Petals keep their own colour, sinking into the far magenta; the heart glows orange.
+            float far = smoothstep(9.0, 26.0, -vFlatWorld.z);
+            vec3 petal = mix(vFlower, vec3(0.86, 0.34, 0.74), far * 0.55);
+            petal = mix(petal, vec3(1.0, 0.52, 0.22), stipple(smoothstep(3.2, 3.45, vTip)));
+            diffuseColor.rgb = mix(petal, vec3(1.0, 0.78, 0.6), stipple(sunF * 0.8) * 0.35);
+          } else if (vTip > 1.5) {
+            // Seed heads: warm grain, rimmed hot where they stand against the sun.
+            diffuseColor.rgb = mix(diffuseColor.rgb / max(vColor.rgb, vec3(0.01)), vec3(0.88, 0.34, 0.36), 0.6);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.64, 0.42), stipple(0.2 + sunF * 1.1 + vGust * 0.3) * 0.75);
+          } else {
+            float up = smoothstep(0.55, 1.0, vTip);
+            // A gust presses the blades flat, flashing their pale undersides as it passes.
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.74, 0.42, 0.9), stipple(vGust * (0.3 + 0.7 * up) * 1.2) * 0.5);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.6, 0.44), stipple(up * (0.1 + 0.9 * sunF)) * 0.55);
+          }
+        }`,
       );
     };
 
-    const count = 6000;
-    const grass = new THREE.InstancedMesh(bladeGeo, grassMat, count);
-    const palette = ['#ffffff', '#f4f6ee', '#eef2e6', '#fbf8ee'].map((h) => new THREE.Color(h));
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
     const p = new THREE.Vector3(), sc = new THREE.Vector3();
+    const white = new THREE.Color(1, 1, 1);
+    // 0 in the dog's play area, rising to 1 a couple of metres outside it.
+    const openness = (x, z) => {
+      const dx = Math.max(DOG_AREA.x0 - x, x - DOG_AREA.x1, 0);
+      const dz = Math.max(DOG_AREA.z0 - z, (z - DOG_AREA.z1) * 0.55, 0);
+      return smoothstep(0.3, 2.8, Math.hypot(dx, dz));
+    };
+    // Meadow height: rolling patches, kept low in the play area and at the viewer's feet.
+    const meadowH = (x, z) => {
+      const patch = 0.5 + 0.5 * Math.sin(x * 0.55 + Math.sin(z * 0.4) * 1.7) * Math.cos(z * 0.47 - x * 0.2);
+      const tall = lerp(0.5, 0.9, patch);
+      const near = lerp(0.6, 1, smoothstep(-2.6, -6.5, z));
+      return lerp(0.2, tall * near, openness(x, z));
+    };
+    const place = (mesh, i, x, z, h, lean) => {
+      p.set(x, 0, z);
+      e.set(rand(-0.08, 0.08) - 0.06, -0.22 + rand(-0.45, 0.45), lean);
+      q.setFromEuler(e);
+      sc.set(rand(0.6, 0.95), h, h);
+      mesh.setMatrixAt(i, m.compose(p, q, sc));
+      mesh.setColorAt(i, white);
+    };
+
+    const count = 9000, heads = 1400, flowers = 800;
+    const grass = new THREE.InstancedMesh(bladeGeo, grassMat, count);
+    const grain = new THREE.InstancedMesh(headGeo, grassMat, heads);
+    const bloom = new THREE.InstancedMesh(flowerGeo, grassMat, flowers);
+    const spot = () => [rand(-16, 12), rand(-26, -2.4)];
     let k = 0;
     while (k < count) {
-      const tx = rand(-16, 12), tz = rand(-26, -2.4);
-      const inPlay = tx > -5.5 && tx < 4.5 && tz > -10.5 && tz < -4.5;
-      const tuftH = inPlay ? rand(0.1, 0.2) : rand(0.14, 0.42);
-      const blades = 5 + Math.floor(Math.random() * 4);
+      const [tx, tz] = spot();
+      const tuftH = meadowH(tx, tz);
+      const blades = 4 + Math.floor(Math.random() * 4);
       for (let b = 0; b < blades && k < count; b++, k++) {
-        p.set(tx + rand(-0.07, 0.07), 0, tz + rand(-0.07, 0.07));
-        e.set(rand(-0.25, 0.25), rand(0, TAU), rand(-0.25, 0.25));
-        q.setFromEuler(e);
-        const h = tuftH * rand(0.6, 1.15);
-        sc.set(h, h, h);
-        grass.setMatrixAt(k, m.compose(p, q, sc));
-        grass.setColorAt(k, palette[Math.floor(Math.random() * palette.length)]);
+        place(grass, k, tx + rand(-0.09, 0.09), tz + rand(-0.09, 0.09), tuftH * rand(0.55, 1.1), rand(-0.12, 0.12));
       }
     }
-    scene.add(grass);
+    for (let i = 0; i < heads; i++) {
+      let tx, tz;
+      do [tx, tz] = spot(); while (openness(tx, tz) * lerp(0.15, 1, smoothstep(-3, -9, tz)) < Math.random());
+      place(grain, i, tx, tz, meadowH(tx, tz) * rand(0.85, 1.15), rand(-0.1, 0.1));
+    }
+    const petals = ['#ffb080', '#ff8a52', '#ffcce4', '#ff9cc8'].map((h) => new THREE.Color(h));
+    const flowerCol = new Float32Array(flowers * 3);
+    for (let i = 0; i < flowers; i++) {
+      let tx, tz;
+      do [tx, tz] = spot(); while (Math.random() > (0.35 + 0.65 * openness(tx, tz)) * smoothstep(-4, -8, tz));
+      place(bloom, i, tx, tz, Math.max(0.12, meadowH(tx, tz) * rand(0.55, 0.9)), rand(-0.1, 0.1));
+      petals[Math.floor(Math.random() * petals.length)].toArray(flowerCol, i * 3);
+    }
+    bloom.geometry.setAttribute('aFlower', new THREE.InstancedBufferAttribute(flowerCol, 3));
+    for (const mesh of [grass, grain, bloom]) {
+      mesh.frustumCulled = false;
+      scene.add(mesh);
+    }
   }
 
   // Trees and hills in the middle and far distance.
