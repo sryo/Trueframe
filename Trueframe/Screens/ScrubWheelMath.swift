@@ -6,20 +6,25 @@ import Foundation
 
 enum ScrubWheelMath {
     static let windowWidth: CGFloat = 120
-    static let itemWidth = IntervalPickerGeometry.itemWidth
-    static let pitch = IntervalPickerGeometry.pitch
+    static let itemWidth: CGFloat = 32
+    static let spacing: CGFloat = 4
+    /// Distance between neighboring item centers, which is what a drag travels per step.
+    static let pitch: CGFloat = itemWidth + spacing
+
+    static func nearestIndex(for interval: Double) -> Int {
+        let options = CaptureSettings.intervalOptions
+        return options.firstIndex(of: CaptureSettings.sanitizedInterval(interval)) ?? 0
+    }
 
     static func rowOffset(for index: Int) -> CGFloat {
         windowWidth / 2 - itemWidth / 2 - CGFloat(index) * pitch
     }
 
+    /// Dragging left (a smaller offset) moves toward longer intervals.
     static func nearestIndex(forRowOffset offset: CGFloat, count: Int) -> Int {
-        IntervalPickerGeometry.previewIndex(
-            current: 0,
-            dragOffset: offset - rowOffset(for: 0),
-            pitch: pitch,
-            count: count
-        )
+        guard count > 0 else { return 0 }
+        let position = ((rowOffset(for: 0) - offset) / pitch).rounded()
+        return min(max(Int(position), 0), count - 1)
     }
 
     static func tappedIndex(atX x: CGFloat, rowOffset offset: CGFloat, count: Int) -> Int {

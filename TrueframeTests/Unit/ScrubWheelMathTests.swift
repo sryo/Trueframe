@@ -3,10 +3,25 @@ import XCTest
 
 final class ScrubWheelMathTests: XCTestCase {
 
-    func testGeometry_usesThePickerPitch() {
+    func testGeometry_pitchIsItemWidthPlusSpacing() {
         XCTAssertEqual(ScrubWheelMath.windowWidth, 120)
-        XCTAssertEqual(ScrubWheelMath.pitch, 36)
-        XCTAssertEqual(ScrubWheelMath.itemWidth, 32)
+        XCTAssertEqual(ScrubWheelMath.pitch, ScrubWheelMath.itemWidth + ScrubWheelMath.spacing)
+    }
+
+    func testNearestIndexForInterval_exactOption() {
+        for (index, option) in CaptureSettings.intervalOptions.enumerated() {
+            XCTAssertEqual(ScrubWheelMath.nearestIndex(for: option), index)
+        }
+    }
+
+    func testNearestIndexForInterval_offGridValue_picksClosestOption() {
+        XCTAssertEqual(ScrubWheelMath.nearestIndex(for: 2.4), 3)
+        XCTAssertEqual(ScrubWheelMath.nearestIndex(for: 60), 4)
+    }
+
+    func testNearestIndexForInterval_invalidValue_picksDefaultOption() {
+        XCTAssertEqual(ScrubWheelMath.nearestIndex(for: .nan), 2)
+        XCTAssertEqual(ScrubWheelMath.nearestIndex(for: -1), 2)
     }
 
     func testRowOffset_centersTheIndexInTheWindow() {
@@ -24,6 +39,18 @@ final class ScrubWheelMathTests: XCTestCase {
         XCTAssertEqual(ScrubWheelMath.nearestIndex(forRowOffset: 1_000, count: 5), 0)
         XCTAssertEqual(ScrubWheelMath.nearestIndex(forRowOffset: -1_000, count: 5), 4)
         XCTAssertEqual(ScrubWheelMath.nearestIndex(forRowOffset: 0, count: 0), 0)
+    }
+
+    func testNearestIndex_dragOfOnePitchMovesOneOption() {
+        let offset = ScrubWheelMath.rowOffset(for: 2)
+        XCTAssertEqual(ScrubWheelMath.nearestIndex(forRowOffset: offset - 36, count: 5), 3)
+        XCTAssertEqual(ScrubWheelMath.nearestIndex(forRowOffset: offset + 36, count: 5), 1)
+    }
+
+    func testNearestIndex_usesPitchNotItemWidth() {
+        // Five item widths is five steps at 32pt but rounds to four at 36pt.
+        let offset = ScrubWheelMath.rowOffset(for: 0) - 5 * 32
+        XCTAssertEqual(ScrubWheelMath.nearestIndex(forRowOffset: offset, count: 6), 4)
     }
 
     func testTappedIndex_findsTheItemUnderTheFinger() {

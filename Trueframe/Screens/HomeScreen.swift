@@ -210,7 +210,7 @@ struct CaptureIntervalPicker: View {
     private let tapSlop: CGFloat = 3
 
     private var currentIndex: Int {
-        IntervalPickerGeometry.nearestIndex(for: settings.captureInterval)
+        ScrubWheelMath.nearestIndex(for: settings.captureInterval)
     }
 
     private var rowOffset: CGFloat {
@@ -228,7 +228,7 @@ struct CaptureIntervalPicker: View {
                 .frame(width: ScrubWheelMath.itemWidth, height: 24)
                 .offset(x: (ScrubWheelMath.windowWidth - ScrubWheelMath.itemWidth) / 2)
 
-            HStack(spacing: IntervalPickerGeometry.spacing) {
+            HStack(spacing: ScrubWheelMath.spacing) {
                 ForEach(options.indices, id: \.self) { index in
                     let distance = ScrubWheelMath.distance(of: index, rowOffset: rowOffset)
                     IntervalItem(
