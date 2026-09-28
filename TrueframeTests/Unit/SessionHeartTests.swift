@@ -28,7 +28,7 @@ final class LandingBeatTests: XCTestCase {
         XCTAssertEqual(opacities[0], 0.9, accuracy: 1e-9)
         XCTAssertEqual(opacities[1], 0.30 + 0.35 * 0.60, accuracy: 1e-9)
         XCTAssertEqual(opacities[2], 0.9 * 0.85, accuracy: 1e-9)
-        XCTAssertEqual(opacities[3], resting.restingOpacity, accuracy: 1e-9)
+        XCTAssertEqual(opacities[3], resting.dim, accuracy: 1e-9)
     }
 
     func testLandingBeat_keepsTheLubDubRhythmAndSwell() {

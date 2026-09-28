@@ -22,7 +22,7 @@ struct CaptureScreen: View {
                 } keyframes: { _ in
                     KeyframeTrack {
                         for step in SessionHeart.afterglowPulse {
-                            LinearKeyframe(step.opacity, duration: step.duration, timingCurve: step.easesOut ? .easeOut : .linear)
+                            step.opacityKeyframe
                         }
                     }
                 }

@@ -146,11 +146,11 @@ private struct HeartbeatSymbol: View {
 
     var body: some View {
         KeyframeAnimator(
-            initialValue: HeartPose(opacity: keyframes.restingOpacity, scale: keyframes.restingScale),
+            initialValue: HeartPose(opacity: keyframes.dim, scale: 1),
             trigger: beat
         ) { pose in
             HeartGlyph()
-                .foregroundStyle(.white.opacity(reduceMotion ? keyframes.restingOpacity : pose.opacity))
+                .foregroundStyle(.white.opacity(reduceMotion ? keyframes.dim : pose.opacity))
                 .scaleEffect(reduceMotion ? 1 : pose.scale)
         } keyframes: { _ in
             let steps = beatIsLanding ? SessionHeart.landingBeat(settlingTo: keyframes) : keyframes.steps
@@ -160,7 +160,7 @@ private struct HeartbeatSymbol: View {
                     MoveKeyframe(start)
                 }
                 for step in steps {
-                    LinearKeyframe(step.opacity, duration: step.duration, timingCurve: step.easesOut ? .easeOut : .linear)
+                    step.opacityKeyframe
                 }
             }
             KeyframeTrack(\.scale) {

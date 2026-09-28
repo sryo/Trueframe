@@ -32,7 +32,6 @@ final class HeartbeatKeyframesTests: XCTestCase {
 
     func testScale_swellsOnEachPulseAndRestsAtOne() {
         XCTAssertEqual(ordinary.steps.map(\.scale), [1.08, 1.0, 1.05, 1.0])
-        XCTAssertEqual(ordinary.restingScale, 1.0)
     }
 
     func testDurations_matchTheLubDubRhythm() {
@@ -42,20 +41,14 @@ final class HeartbeatKeyframesTests: XCTestCase {
 
     func testTotalDuration_fitsInsideOneBeat() {
         XCTAssertEqual(ordinary.totalDuration, 0.96, accuracy: 1e-9)
-        XCTAssertLessThan(ordinary.totalDuration, Motion.restingBeatSeconds)
+        XCTAssertLessThan(.seconds(ordinary.totalDuration), Motion.restingBeatInterval)
     }
 
-    func testRest_isDimAndEveryPulseStaysWithinRange() {
-        XCTAssertEqual(ordinary.restingOpacity, ordinary.dim)
+    func testEveryPulse_staysBetweenDimAndBright() {
         for step in ordinary.steps {
             XCTAssertGreaterThanOrEqual(step.opacity, ordinary.dim)
             XCTAssertLessThanOrEqual(step.opacity, ordinary.bright)
         }
-    }
-
-    func testRestingBeatSeconds_matchesInterval() {
-        XCTAssertEqual(Motion.restingBeatSeconds, 60.0 / 52, accuracy: 1e-9)
-        XCTAssertEqual(Motion.restingBeatInterval, .seconds(60.0 / 52))
     }
 }
 

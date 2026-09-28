@@ -16,11 +16,13 @@ enum SessionHeart {
 
     /// One bright lub-dub that settles at the home heart's resting brightness.
     static func landingBeat(settlingTo resting: HeartbeatKeyframes) -> [HeartbeatKeyframes.Step] {
-        let dim = resting.restingOpacity
-        let opacities = [landingPeak, dim + 0.35 * (landingPeak - dim), landingPeak * 0.85, dim]
-        return zip(resting.steps, opacities).map { step, opacity in
-            .init(opacity: opacity, scale: step.scale, duration: step.duration, easesOut: step.easesOut)
-        }
+        HeartbeatKeyframes(dim: resting.dim, bright: landingPeak).steps
+    }
+}
+
+extension HeartbeatKeyframes.Step {
+    var opacityKeyframe: LinearKeyframe<Double> {
+        LinearKeyframe(opacity, duration: duration, timingCurve: easesOut ? .easeOut : .linear)
     }
 }
 

@@ -11,6 +11,5 @@ enum Motion {
     static let fade = Animation.easeOut(duration: 0.2)
 
     /// A resting heart, 52 bpm.
-    static let restingBeatSeconds: TimeInterval = 60.0 / 52
-    static let restingBeatInterval: Duration = .seconds(restingBeatSeconds)
+    static let restingBeatInterval: Duration = .seconds(60.0 / 52)
 }

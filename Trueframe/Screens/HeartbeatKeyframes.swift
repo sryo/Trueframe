@@ -14,13 +14,15 @@ struct HeartbeatKeyframes: Equatable {
     let dim: Double
     let bright: Double
 
-    /// The heart waxes with the moon.
-    init(isNearFullMoon: Bool) {
-        (dim, bright) = isNearFullMoon ? (0.50, 0.90) : (0.30, 0.60)
+    init(dim: Double, bright: Double) {
+        self.dim = dim
+        self.bright = bright
     }
 
-    var restingOpacity: Double { dim }
-    var restingScale: Double { 1.0 }
+    /// The heart waxes with the moon.
+    init(isNearFullMoon: Bool) {
+        self = isNearFullMoon ? Self(dim: 0.50, bright: 0.90) : Self(dim: 0.30, bright: 0.60)
+    }
 
     var steps: [Step] {
         [
