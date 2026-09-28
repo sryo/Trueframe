@@ -216,6 +216,7 @@ struct TumbleAnimationView: View {
         }
 
         await animateAll(to: .fanned, with: .spring(duration: 0.5, bounce: 0.2), staggered: true)
+        guard !Task.isCancelled else { return }
         try? await Task.sleep(for: FanLayout.hold)
         let decided = await FanLayout.awaitVerdict(within: FanLayout.verdictDeadline, read: verdict)
         kept = FanLayout.keptFlags(shown: shown, verdict: decided)
@@ -243,17 +244,18 @@ struct TumbleAnimationView: View {
 
     /// Resumes when the last photo's animation completes, so the stagger and springs set the pace.
     private func animateAll(to stage: Stage, with animation: Animation, staggered: Bool) async {
-        await withCheckedContinuation { continuation in
-            let last = stages.indices.last
-            for index in stages.indices {
-                let delay = staggered ? FanLayout.delay(for: index) : 0
-                withAnimation(animation.delay(delay)) {
-                    stages[index] = stage
-                } completion: {
-                    if index == last { continuation.resume() }
-                }
+        let lastLanded = ResumeOnce()
+        let last = stages.indices.last
+        if last == nil { lastLanded.resume() }
+        for index in stages.indices {
+            let delay = staggered ? FanLayout.delay(for: index) : 0
+            withAnimation(animation.delay(delay)) {
+                stages[index] = stage
+            } completion: {
+                if index == last { lastLanded.resume() }
             }
         }
+        await lastLanded.wait()
     }
 }
 
