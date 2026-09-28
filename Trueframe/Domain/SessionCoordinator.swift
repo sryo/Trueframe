@@ -83,12 +83,6 @@ final class SessionCoordinator {
         await engine.prewarm(currentConfiguration())
     }
 
-    func stop() {
-        proximityTask?.cancel()
-        proximityTask = nil
-        proximity.stop()
-    }
-
     func beginSession() {
         guard phase == .idle || phase == .celebrating || phase == .saving,
               hasPermissions, FileManager.default.hasAdequateSpace else { return }

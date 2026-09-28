@@ -717,16 +717,6 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertNil(released)
     }
 
-    func testStop_stopsProximityAndIgnoresLaterCovers() async {
-        sut.stop()
-        proximity.send(covered: true)
-        try? await Task.sleep(for: .milliseconds(100))
-
-        XCTAssertEqual(proximity.stopCount, 1)
-        XCTAssertEqual(sut.phase, .idle)
-        XCTAssertEqual(engine.startCallCount, 0)
-    }
-
     func testReturnToIdle_prewarmsEngine() async {
         let prewarmsAfterStart = engine.prewarmCallCount
 
