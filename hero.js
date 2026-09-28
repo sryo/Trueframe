@@ -11,7 +11,7 @@ const PT = 2;
 const SW = 402;
 const SH = 874;
 const CAP = 512;
-const LENS_FOV = { '0.5': 58, '1x': 30, '2x': 16 };
+const LENS_FOV = { '0.5': 20, '1x': 10, '2x': 6 };
 const INTERVALS = [0.25, 0.5, 1, 2, 5];
 const INTERVAL_LABELS = ['0.25s', '0.5s', '1s', '2s', '5s'];
 const KEEP_THRESHOLD = 0.4;
@@ -1564,8 +1564,8 @@ function start(stage) {
 
     if (pressed) {
       const want = aimAtDog(pose.pressed.p);
-      aim.yaw = damp(aim.yaw, clamp(want.yaw, -0.3, 0.3), 2.2, dt);
-      aim.pitch = damp(aim.pitch, clamp(want.pitch, -0.35, 0.08), 2.2, dt);
+      aim.yaw = damp(aim.yaw, clamp(want.yaw, -0.7, 0.7), 5, dt);
+      aim.pitch = damp(aim.pitch, clamp(want.pitch, -0.35, 0.08), 5, dt);
     }
     const tgt = pressed
       ? [...pose.pressed.p.toArray(), aim.pitch, aim.yaw, 0]
@@ -1726,8 +1726,8 @@ function start(stage) {
   function beginSession() {
     if (session || ui.mode === 'celebrate') return;
     const want = aimAtDog(pose.pressed.p);
-    aim.yaw = clamp(want.yaw + rand(-0.06, 0.06), -0.3, 0.3);
-    aim.pitch = clamp(want.pitch + rand(-0.04, 0.04), -0.35, 0.08);
+    aim.yaw = clamp(want.yaw + rand(-0.02, 0.02), -0.7, 0.7);
+    aim.pitch = clamp(want.pitch + rand(-0.02, 0.02), -0.35, 0.08);
     session = { frames: [], eligible: 0, best: null, nextShot: time + INTERVALS[ui.interval] };
     if (!dogSim.stunt) dogSim.stuntAt = dogSim.time + 0.6;
     setMode('capture');
