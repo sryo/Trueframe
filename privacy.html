@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy · trueframe</title>
+  <meta name="description" content="Trueframe collects nothing. Your photos go to your library and nowhere else.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    /* Tokens shared with index.html */
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f5f5f5;
+      --text-primary: #222;
+      --text-secondary: #666;
+      --accent: #e8395a;
+      --border: #e0e0e0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1e1e1e;
+        --bg-secondary: #2a2a2a;
+        --text-primary: #f0f0f0;
+        --text-secondary: #a0a0a0;
+        --accent: #ff375f;
+        --border: #3a3a3a;
+      }
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+    .container { max-width: 640px; margin: 0 auto; padding: 0 24px; }
+
+    .top { padding: 24px 0; }
+    .top a { color: var(--text-secondary); font-size: 0.95rem; font-weight: 500; }
+
+    .intro { padding: 72px 0 40px; }
+    .intro h1 { font-size: 3rem; font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; }
+    .intro .lead { margin-top: 1.5rem; font-size: 1.35rem; font-weight: 700; line-height: 1.4; }
+    .intro .sub { margin-top: 0.4rem; font-size: 1.1rem; color: var(--text-secondary); }
+
+    .points { border-top: 1px solid var(--border); }
+    .point { padding: 20px 0; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 11rem 1fr; gap: 1rem; }
+    .point h2 { font-size: 1rem; font-weight: 700; }
+    .point p { color: var(--text-secondary); font-size: 0.95rem; }
+
+    .closing { padding: 32px 0 8px; color: var(--text-secondary); font-size: 0.9rem; display: grid; gap: 0.8rem; }
+
+    .footer { padding: 40px 0; text-align: center; }
+    .footer__bottom {
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      display: flex;
+      gap: 1.25rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .footer__bottom a { color: var(--text-secondary); }
+
+    @media (max-width: 600px) {
+      .intro { padding: 40px 0 32px; }
+      .intro h1 { font-size: 2.5rem; }
+      .point { grid-template-columns: 1fr; gap: 0.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="top"><a href="./">trueframe ♥</a></nav>
+
+    <header class="intro">
+      <h1>Privacy</h1>
+      <p class="lead">Trueframe collects nothing.</p>
+      <p class="sub">Your photos go to your library and nowhere else.</p>
+    </header>
+
+    <main class="points">
+      <section class="point">
+        <h2>No internet</h2>
+        <p>Trueframe never connects to a network. There's no code for it.</p>
+      </section>
+      <section class="point">
+        <h2>No tracking</h2>
+        <p>No accounts, analytics, ads or tracking.</p>
+      </section>
+      <section class="point">
+        <h2>Camera</h2>
+        <p>The camera is ready while Trueframe is open, and iOS shows its green dot. Photos are only taken while the phone is pressed to you and its proximity sensor is covered.</p>
+      </section>
+      <section class="point">
+        <h2>Your photos</h2>
+        <p>During a session, photos are kept in the app's own temporary storage on your iPhone. When it ends, Trueframe chooses the best ones on your iPhone, adds them to your library and deletes the rest. Nothing is uploaded.</p>
+      </section>
+      <section class="point">
+        <h2>Photo library</h2>
+        <p>Trueframe only asks to add photos. It can't see, read or change anything already in your library.</p>
+      </section>
+      <section class="point">
+        <h2>On your device</h2>
+        <p>Your lens, flash and interval choices. Deleting the app deletes them.</p>
+      </section>
+      <section class="point">
+        <h2>Permissions</h2>
+        <p>Camera, to take photos, and adding to Photos, to save them. You can revoke both anytime in Settings.</p>
+      </section>
+    </main>
+
+    <div class="closing">
+      <p>This applies to Trueframe for iPhone, made by sryo. Since no data is collected from anyone, none is collected from children. If this ever changes, this page changes first and the release notes will say so. The source is public, so you can check every line of this yourself.</p>
+      <p>Questions: <a href="https://github.com/sryo/Trueframe/issues">open an issue on GitHub</a>. Last updated September 28, 2026.</p>
+    </div>
+
+    <footer class="footer">
+      <div class="footer__bottom">
+        <a href="./">Home</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/sryo/Trueframe">GitHub</a>
+        <span>© 2026 sryo</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
