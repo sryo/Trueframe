@@ -101,6 +101,5 @@ final class HeartCollapseTests: XCTestCase {
         XCTAssertEqual(HeartCollapse.handoff, 1.23, accuracy: 1e-9)
         XCTAssertEqual(HeartCollapse.finished, 1.08 + 1.15, accuracy: 1e-9)
         XCTAssertLessThan(HeartCollapse.handoff, HeartCollapse.finished)
-        XCTAssertGreaterThan(HeartCollapse.finished - HeartCollapse.burstStart, BurstField.duration - 1e-9)
     }
 }

@@ -79,7 +79,6 @@ final class SessionCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(sut.phase, .capturing)
         await waitUntil { self.engine.startCallCount == 1 }
-        XCTAssertEqual(engine.startCallCount, 1)
     }
 
     func testBeginSession_whileCapturing_isIgnored() async {
@@ -178,6 +177,7 @@ final class SessionCoordinatorTests: XCTestCase {
 
         await waitUntil { self.sut.phase == .celebrating }
         XCTAssertEqual(sut.sessionPreviews.count, CurationPolicy.maxPhotosPerSession + 1)
+        XCTAssertEqual(engine.stopCallCount, 1)
     }
 
     func testEngineFinishingStream_endsSession() async {
@@ -211,7 +211,6 @@ final class SessionCoordinatorTests: XCTestCase {
         await Task.yield()
         haptics.releasePrepare()
         await ending.value
-        try? await Task.sleep(for: .milliseconds(100))
 
         XCTAssertFalse(haptics.isPrepared, "Haptic engine left running after the session ended")
         XCTAssertEqual(sut.phase, .idle)
@@ -240,8 +239,8 @@ final class SessionCoordinatorTests: XCTestCase {
             engine.emitCapturedPhoto(brightness: 0.01)
         }
 
+        // With no real photos, the abort goes straight back to idle
         await waitUntil { self.sut.phase == .idle }
-        XCTAssertEqual(sut.phase, .idle, "Dark-frame abort with no real photos should reset to idle")
         XCTAssertEqual(engine.stopCallCount, 1)
     }
 
@@ -251,25 +250,13 @@ final class SessionCoordinatorTests: XCTestCase {
 
         engine.emitCapturedPhoto(brightness: 0.01)
         engine.emitCapturedPhoto(brightness: 0.01)
-        engine.emitCapturedPhoto(brightness: 0.8)  // resets the counter
+        engine.emitCapturedPhoto(brightness: 0.8)
         engine.emitCapturedPhoto(brightness: 0.01)
         engine.emitCapturedPhoto(brightness: 0.01)
+        engine.emitCapturedPhoto(brightness: 0.8)
 
-        try? await Task.sleep(for: .milliseconds(300))
+        await waitForStoredPhotos(2)
         XCTAssertEqual(sut.phase, .capturing, "Session should survive interleaved dark frames")
-    }
-
-    func testMaxPhotoCount_endsSession() async {
-        sut.beginSession()
-        await waitUntil { self.engine.startCallCount == 1 }
-
-        for _ in 0..<CurationPolicy.maxPhotosPerSession {
-            engine.emitCapturedPhoto()
-        }
-
-        await waitUntil { self.sut.phase == .celebrating }
-        XCTAssertEqual(sut.phase, .celebrating)
-        XCTAssertEqual(engine.stopCallCount, 1)
     }
 
     func testCapturedCount_countsKeptPhotosButNotDarkFrames() async {
@@ -347,7 +334,6 @@ final class SessionCoordinatorTests: XCTestCase {
         sut.tumbleAnimationComplete()
         await waitUntil { self.sut.phase == .idle }
 
-        XCTAssertEqual(sut.phase, .idle)
         await waitUntil { await self.saver.savedBatches.first?.count == 1 }
         await saver.releaseSaves()
         await sut.libraryWrite?.value

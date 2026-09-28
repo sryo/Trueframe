@@ -34,8 +34,7 @@ final class UIImageExtensionTests: XCTestCase {
 
         let brightness = emptyImage.averageBrightness()
 
-        XCTAssertGreaterThanOrEqual(brightness, 0.0)
-        XCTAssertLessThanOrEqual(brightness, 1.0)
+        XCTAssertEqual(brightness, 0.5)
     }
 
     func testIsPitchBlack_veryDarkImage_returnsTrue() {

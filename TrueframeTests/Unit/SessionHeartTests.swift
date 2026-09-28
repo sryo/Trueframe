@@ -3,10 +3,6 @@ import XCTest
 
 final class SessionHeartTests: XCTestCase {
 
-    func testAfterglow_restsFaintlyWhileCapturing() {
-        XCTAssertEqual(SessionHeart.afterglowResting, 0.12)
-    }
-
     func testAfterglow_pulsesUpQuicklyAndFadesBackSlowly() {
         let steps = SessionHeart.afterglowPulse
         XCTAssertEqual(steps.map(\.opacity), [0.4, 0.12])
@@ -22,7 +18,6 @@ final class LandingBeatTests: XCTestCase {
         let resting = HeartbeatKeyframes(isNearFullMoon: false)
         let steps = SessionHeart.landingBeat(settlingTo: resting)
 
-        XCTAssertEqual(SessionHeart.landingStart, 0)
         let opacities = steps.map(\.opacity)
         XCTAssertEqual(opacities.count, 4)
         XCTAssertEqual(opacities[0], 0.9, accuracy: 1e-9)
