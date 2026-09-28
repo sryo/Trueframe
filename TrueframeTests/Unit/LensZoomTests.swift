@@ -60,4 +60,13 @@ final class LensZoomTests: XCTestCase {
         XCTAssertEqual(LensStyle.scale(isSelected: false), 0.86)
         XCTAssertEqual(LensStyle.labelOpacity(isSelected: false), 0.3)
     }
+
+    func testLensStyle_discShrinksThroughItsDiameter() {
+        XCTAssertEqual(LensStyle.diameter(slot: 52, isSelected: true), 52)
+        XCTAssertEqual(LensStyle.diameter(slot: 52, isSelected: false), 52 * 0.86, accuracy: 0.001)
+    }
+
+    func testLensStyle_labelIsLegibleAtEverySize() {
+        XCTAssertGreaterThanOrEqual(LensStyle.labelSize, 12)
+    }
 }

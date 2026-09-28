@@ -36,6 +36,14 @@ enum LensStyle {
     static func labelOpacity(isSelected: Bool) -> Double {
         isSelected ? 0.9 : 0.3
     }
+
+    static let labelSize: CGFloat = 12
+
+    /// Shrinking through the frame keeps the glass and its label centered on each other; a
+    /// scale effect resolves them around different anchors inside the glass container.
+    static func diameter(slot: CGFloat, isSelected: Bool) -> CGFloat {
+        slot * scale(isSelected: isSelected)
+    }
 }
 
 struct CameraToggleView: View {
@@ -99,10 +107,11 @@ private struct CameraLensButton: View {
 
     var body: some View {
         Button(action: action) {
+            let diameter = reduceMotion ? size : LensStyle.diameter(slot: size, isSelected: isSelected)
             Text(label)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: LensStyle.labelSize, weight: .medium))
                 .foregroundStyle(.white.opacity(LensStyle.labelOpacity(isSelected: isSelected)))
-                .frame(width: size, height: size)
+                .frame(width: diameter, height: diameter)
                 .overlay(
                     Circle()
                         .strokeBorder(.white.opacity(0.6), lineWidth: 1)
@@ -110,7 +119,7 @@ private struct CameraLensButton: View {
                 )
                 .contentShape(Circle())
                 .glassEffect(.clear.interactive(), in: .circle)
-                .scaleEffect(reduceMotion ? 1 : LensStyle.scale(isSelected: isSelected))
+                .frame(width: size, height: size)
                 .animation(reduceMotion ? Motion.fade : Motion.glass, value: isSelected)
         }
         .buttonStyle(PressStyle())
