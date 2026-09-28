@@ -308,6 +308,7 @@ function start(stage) {
   camera.position.copy(VIEW_CAM_POS);
   camera.lookAt(VIEW_CAM_TARGET);
 
+  const beamTime = { value: 0 };
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(500, 48, 24),
     new THREE.ShaderMaterial({
@@ -321,6 +322,7 @@ function start(stage) {
         sunCol: { value: new THREE.Color('#fff4e2') },
         haloCol: { value: new THREE.Color('#ffe2b8') },
         sunDir: { value: sunDir },
+        beamTime: beamTime,
       },
       vertexShader: /* glsl */ `
         varying vec3 vDir;
@@ -338,6 +340,7 @@ function start(stage) {
         uniform vec3 glow1;
         uniform vec3 glow2;
         uniform vec3 sunDir;
+        uniform float beamTime;
         varying vec3 vDir;
         ${STIPPLE_GLSL}
         // Colour bands meeting in a stippled seam.
@@ -359,6 +362,15 @@ function start(stage) {
           col += glow1 * (pow(ss, 5.0) * 0.22 + horizonGlow * 0.18);
           col = mix(col, glow1, stipple(pow(ss, 16.0)) * 0.7);
           col = mix(col, glow2, stipple(pow(ss, 70.0)) * 0.85);
+          // Sunbeams: a few long wedges fanning out of the sun, uneven in width, turning slowly,
+          // fading out with distance from it and dissolving into stipple at their edges.
+          vec3 beamRight = normalize(cross(sunDir, vec3(0.0, 1.0, 0.0)));
+          vec3 beamUp = cross(beamRight, sunDir);
+          vec3 rel = d - sunDir * s;
+          float beamAngle = atan(dot(rel, beamUp), dot(rel, beamRight)) + beamTime * 0.02;
+          float beamShape = sin(beamAngle * 7.0) * 0.6 + sin(beamAngle * 3.0 + 1.3) * 0.4;
+          float beams = smoothstep(0.25, 0.75, beamShape) * smoothstep(0.55, 0.985, s) * (1.0 - smoothstep(0.994, 0.998, s));
+          col = mix(col, glow2, stipple(beams) * 0.42);
           col = mix(col, haloCol, smoothstep(0.994, 0.9986, s) * 0.8);
           col = mix(col, sunCol, smoothstep(0.99895, 0.99905, s));
           col += sunCol * smoothstep(0.99895, 0.9999, s) * 0.15;
@@ -2013,7 +2025,10 @@ function start(stage) {
   function update(dt) {
     time += dt;
     const t = time;
-    if (!reduced) grassTime.value += dt;
+    if (!reduced) {
+      grassTime.value += dt;
+      beamTime.value += dt;
+    }
 
     dogStep(dt);
     applyDog();
