@@ -1,6 +1,5 @@
 import CoreHaptics
 import os
-import UIKit
 
 @MainActor
 protocol HeartbeatPlaying: AnyObject {
@@ -123,7 +122,6 @@ final class CoreHapticsHeartbeat: HeartbeatEngine {
     }
 
     private static func heartbeatPattern() throws -> CHHapticPattern {
-        // Simple double-tap heartbeat: lub-dub
         let lub = CHHapticEvent(
             eventType: .hapticTransient,
             parameters: [

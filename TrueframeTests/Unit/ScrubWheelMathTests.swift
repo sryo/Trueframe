@@ -1,5 +1,3 @@
-// Unit tests for the interval scrub wheel's layout and accessibility math.
-
 import XCTest
 @testable import Trueframe
 

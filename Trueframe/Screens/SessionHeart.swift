@@ -10,7 +10,7 @@ enum SessionHeart {
         .init(opacity: afterglowResting, scale: 1.0, duration: 0.5, easesOut: true),
     ]
 
-    /// The heart is dark while the photos fly into it, then lights up as they land.
+    /// When the celebration hands home back, the heart drops dark and gives one bright beat.
     static let landingStart = 0.0
     static let landingPeak = 0.9
 

@@ -1,5 +1,3 @@
-// Unit tests for the flash button's hit area and spoken state.
-
 import XCTest
 @testable import Trueframe
 

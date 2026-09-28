@@ -1,5 +1,3 @@
-// Camera lens selector view.
-
 import AVFoundation
 import SwiftUI
 

@@ -5,7 +5,7 @@
 /// - capturing -> ending          (proximity lifted, dark frames, limit, low storage)
 /// - ending -> celebrating        (photos exist)
 /// - ending -> idle               (nothing captured)
-/// - celebrating -> saving        (tumble animation complete)
+/// - celebrating -> saving        (celebration handed off)
 /// - saving -> idle               (photos curated; the library write finishes on its own)
 /// - celebrating -> capturing     (covered again; the old session saves in the background)
 /// - saving -> capturing          (covered again; the old session saves in the background)

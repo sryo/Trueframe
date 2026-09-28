@@ -1,6 +1,3 @@
-// Scriptable capture engine for coordinator tests.
-
-import Foundation
 import UIKit
 @testable import Trueframe
 
@@ -52,8 +49,6 @@ final class FakeCaptureEngine: CaptureEngineProtocol {
         continuation?.finish()
         continuation = nil
     }
-
-    // MARK: - Test Controls
 
     func releaseStart() {
         holdsStart = false

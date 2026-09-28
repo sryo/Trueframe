@@ -1,5 +1,3 @@
-// Unit tests for the lens selector's zoom label and selection styling.
-
 import XCTest
 @testable import Trueframe
 
@@ -9,8 +7,6 @@ final class LensZoomTests: XCTestCase {
         let halfWide = wideFOV * .pi / 360
         return atan(tan(halfWide) / zoom) * 360 / .pi
     }
-
-    // MARK: - Zoom label
 
     func testZoomLabel_twoTimes() {
         XCTAssertEqual(zoomLabel(teleFOV: teleFOV(zoom: 2, wideFOV: 77), wideFOV: 77), "2x")
@@ -48,8 +44,6 @@ final class LensZoomTests: XCTestCase {
         XCTAssertEqual(zoomLabel(teleFOV: 0, wideFOV: 77), "2x")
         XCTAssertEqual(zoomLabel(teleFOV: teleFOV(zoom: 3, wideFOV: 77), wideFOV: 0), "3x")
     }
-
-    // MARK: - Selection styling
 
     func testLensStyle_selectedIsFullSize() {
         XCTAssertEqual(LensStyle.scale(isSelected: true), 1.0)

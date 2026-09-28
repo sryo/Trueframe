@@ -64,7 +64,7 @@ final class MotionMonitor {
     }
 
     /// Waits up to `timeout` for the device to settle below the stillness
-    /// threshold, then returns either way - the capture cadence has a floor,
+    /// threshold, then returns either way. The capture cadence has a floor,
     /// so a constantly moving user still gets photos.
     func waitForStillness(timeout: Duration, isolation: isolated (any Actor)? = #isolation) async {
         guard manager.isDeviceMotionActive else { return }

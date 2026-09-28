@@ -70,8 +70,6 @@ final class SessionCoordinatorTests: XCTestCase {
         await waitUntil { await self.sut.store.count >= count }
     }
 
-    // MARK: - Begin Session
-
     func testInitialPhase_isIdle() {
         XCTAssertEqual(sut.phase, .idle)
     }
@@ -113,8 +111,6 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(engine.lastConfiguration?.interval, 2.0)
         XCTAssertEqual(engine.lastConfiguration?.lens, .telephoto)
     }
-
-    // MARK: - End Session
 
     func testEndSession_withPhotos_entersCelebrating() async {
         sut.beginSession()
@@ -236,8 +232,6 @@ final class SessionCoordinatorTests: XCTestCase {
         await ending.value
     }
 
-    // MARK: - Dark Frame Abort
-
     func testThreeConsecutiveDarkFrames_endSession() async {
         sut.beginSession()
         await waitUntil { self.engine.startCallCount == 1 }
@@ -265,8 +259,6 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(sut.phase, .capturing, "Session should survive interleaved dark frames")
     }
 
-    // MARK: - Photo Limit
-
     func testMaxPhotoCount_endsSession() async {
         sut.beginSession()
         await waitUntil { self.engine.startCallCount == 1 }
@@ -279,8 +271,6 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(sut.phase, .celebrating)
         XCTAssertEqual(engine.stopCallCount, 1)
     }
-
-    // MARK: - Capture Count
 
     func testCapturedCount_countsKeptPhotosButNotDarkFrames() async {
         sut.beginSession()
@@ -312,8 +302,6 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(sut.capturedCount, 0)
         await sut.endSession()
     }
-
-    // MARK: - Tumble Completion
 
     func testTumbleAnimationComplete_whenNotCelebrating_isIgnored() {
         sut.tumbleAnimationComplete()
@@ -511,8 +499,6 @@ final class SessionCoordinatorTests: XCTestCase {
         await sut.endSession()
     }
 
-    // MARK: - Interrupting The Celebration
-
     func testBeginSession_whileCelebrating_startsNewSessionAtOnce() async {
         await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
         XCTAssertEqual(sut.phase, .celebrating)
@@ -701,8 +687,6 @@ final class SessionCoordinatorTests: XCTestCase {
         await sut.endSession()
     }
 
-    // MARK: - Heartbeat
-
     func testHeartbeat_beatsOnContactAndBeforeEachCapture() async {
         sut.beginSession()
         await waitUntil { self.engine.startCallCount == 1 }
@@ -717,8 +701,6 @@ final class SessionCoordinatorTests: XCTestCase {
         await sut.endSession()
         XCTAssertEqual(haptics.endCount, 1)
     }
-
-    // MARK: - Proximity
 
     func testProximity_coveringBeginsSessionAndClearingEndsIt() async {
         XCTAssertEqual(proximity.startCount, 1)
@@ -758,8 +740,6 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(sut.phase, .idle)
         XCTAssertEqual(engine.startCallCount, 0)
     }
-
-    // MARK: - Prewarm
 
     func testReturnToIdle_prewarmsEngine() async {
         let prewarmsAfterStart = engine.prewarmCallCount

@@ -85,11 +85,9 @@ struct HomeScreen: View {
                 HStack {
                     Spacer()
 
-                    // Camera selection and interval
                     VStack(spacing: 12) {
                         CameraToggleView(settings: coordinator.cameraSelectionSettings)
 
-                        // Capture interval picker (0.25s = burst-like speed)
                         CaptureIntervalPicker(settings: coordinator.captureSettings)
                     }
                     .opacity(0.7)
@@ -138,7 +136,7 @@ private struct HeartPose {
 }
 
 private struct HeartbeatSymbol: View {
-    /// Bumped when a session's photos have gathered into the heart.
+    /// Bumped each time a celebration hands the screen back to home.
     let landings: Int
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

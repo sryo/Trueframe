@@ -1,5 +1,3 @@
-// Unit tests for the home screen's enter and exit timeline.
-
 import XCTest
 @testable import Trueframe
 

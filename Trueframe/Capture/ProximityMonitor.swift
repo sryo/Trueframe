@@ -12,7 +12,7 @@ protocol ProximityEventSource: AnyObject {
 
 @MainActor
 final class ProximityMonitor: ProximityEventSource {
-    /// Emits true when the sensor is covered, false when cleared. Debounced 50ms.
+    /// Debounced 50ms.
     private(set) var events: AsyncStream<Bool>
 
     private var continuation: AsyncStream<Bool>.Continuation

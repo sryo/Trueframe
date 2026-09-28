@@ -21,7 +21,7 @@ struct CapturedAsset: Sendable {
     let id: UUID
     /// Compressed photo container data, ready for the photo library as-is.
     let fileData: Data
-    /// Small embedded preview, used for the tumble animation and quality scoring.
+    /// Small embedded preview, used for the celebration and quality scoring.
     let preview: UIImage?
     /// True when `fileData` is a deferred photo proxy that Photos finishes processing.
     let isProxy: Bool
