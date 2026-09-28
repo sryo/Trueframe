@@ -23,6 +23,7 @@ struct ContentView: View {
                         if let celebration {
                             TumbleAnimationView(
                                 photos: celebration.photos,
+                                verdict: { coordinator.keptPreviews },
                                 heartFrame: heartFrame,
                                 canvas: proxy.size,
                                 onComplete: {

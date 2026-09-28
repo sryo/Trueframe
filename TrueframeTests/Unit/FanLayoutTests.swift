@@ -52,11 +52,56 @@ final class FanLayoutTests: XCTestCase {
         XCTAssertEqual(FanLayout.delay(for: 4), 0.12, accuracy: 1e-9)
     }
 
-    func testPhotos_showsTheFirstSeven() {
-        let images = (0..<10).map { _ in UIImage() }
-        let shown = FanLayout.photos(from: images)
-        XCTAssertEqual(shown.count, 7)
-        XCTAssertTrue(shown[0] === images[0])
-        XCTAssertTrue(shown[6] === images[6])
+    func testShown_smallSessionShowsEveryPhoto() {
+        XCTAssertEqual(FanLayout.shownIndices(count: 5, kept: [false, true, false, true, false]), [0, 1, 2, 3, 4])
+    }
+
+    func testShown_withoutAVerdictShowsTheFirstSeven() {
+        XCTAssertEqual(FanLayout.shownIndices(count: 10, kept: nil), Array(0..<7))
+    }
+
+    func testShown_prefersKeptPhotosThenFillsWithDropsInCaptureOrder() {
+        let kept = [false, true, false, true, false, false, false, false, true, false]
+        XCTAssertEqual(FanLayout.shownIndices(count: 10, kept: kept), [0, 1, 2, 3, 4, 5, 8])
+    }
+
+    func testShown_manyKeepersLeaveNoRoomForDrops() {
+        let kept = (0..<12).map { $0 % 4 != 0 }
+        XCTAssertEqual(FanLayout.shownIndices(count: 12, kept: kept), [1, 2, 3, 5, 6, 7, 9])
+    }
+
+    func testKeptFlags_withoutAVerdictKeepEverything() {
+        XCTAssertEqual(FanLayout.keptFlags(shown: [0, 2, 3], verdict: nil), [true, true, true])
+    }
+
+    func testKeptFlags_followTheVerdictForTheShownPhotos() {
+        XCTAssertEqual(FanLayout.keptFlags(shown: [0, 2, 3], verdict: [true, true, false, true]), [true, false, true])
+    }
+
+    func testKeptFlags_neverDropEveryShownPhoto() {
+        XCTAssertEqual(FanLayout.keptFlags(shown: [1, 2], verdict: [true, false, false]), [true, true],
+                       "Something has to reach the heart")
+    }
+
+    func testVerdictDeadline_isShort() {
+        XCTAssertLessThanOrEqual(FanLayout.verdictDeadline, .seconds(0.5))
+        XCTAssertLessThanOrEqual(FanLayout.fanVerdictGrace, .seconds(0.25))
+    }
+
+    @MainActor
+    func testAwaitVerdict_returnsAsSoonAsItIsKnown() async {
+        let start = ContinuousClock.now
+        let verdict = await FanLayout.awaitVerdict(within: .seconds(2)) { [true, false] }
+        XCTAssertEqual(verdict, [true, false])
+        XCTAssertLessThan(ContinuousClock.now - start, .milliseconds(100))
+    }
+
+    @MainActor
+    func testAwaitVerdict_givesUpAtTheDeadline() async {
+        let start = ContinuousClock.now
+        let verdict = await FanLayout.awaitVerdict(within: .milliseconds(60)) { nil }
+        XCTAssertNil(verdict)
+        XCTAssertGreaterThanOrEqual(ContinuousClock.now - start, .milliseconds(60))
+        XCTAssertLessThan(ContinuousClock.now - start, .milliseconds(500))
     }
 }

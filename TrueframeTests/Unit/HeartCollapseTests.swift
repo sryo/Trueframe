@@ -3,6 +3,8 @@ import XCTest
 
 final class HeartCollapseTests: XCTestCase {
 
+    private let all7 = Array(repeating: true, count: 7)
+
     func testFallStart_centerFallsFirstAndOuterPhotosLast() {
         let starts = (0..<7).map { HeartCollapse.fallStart(index: $0, count: 7) }
         XCTAssertEqual(starts[3], 0)
@@ -76,16 +78,16 @@ final class HeartCollapseTests: XCTestCase {
     }
 
     func testCore_absorbsEachPhotoAsItLands() {
-        XCTAssertEqual(HeartCollapse.absorbed(at: 0, count: 7), 0)
-        XCTAssertEqual(HeartCollapse.absorbed(at: HeartCollapse.fallTime + 0.001, count: 7), 1.0 / 7, accuracy: 1e-9)
-        XCTAssertEqual(HeartCollapse.absorbed(at: HeartCollapse.landed, count: 7), 1, accuracy: 1e-9)
+        XCTAssertEqual(HeartCollapse.absorbed(at: 0, kept: all7), 0)
+        XCTAssertEqual(HeartCollapse.absorbed(at: HeartCollapse.fallTime + 0.001, kept: all7), 1.0 / 7, accuracy: 1e-9)
+        XCTAssertEqual(HeartCollapse.absorbed(at: HeartCollapse.landed, kept: all7), 1, accuracy: 1e-9)
     }
 
     func testCore_wobblesAfterALandingAndSettles() {
         let landing = HeartCollapse.fallTime
-        XCTAssertEqual(HeartCollapse.wobble(at: landing, count: 1), 0, accuracy: 1e-9)
-        XCTAssertNotEqual(HeartCollapse.wobble(at: landing + 0.05, count: 1), 0)
-        XCTAssertEqual(HeartCollapse.wobble(at: landing + 1, count: 1), 0, accuracy: 1e-3)
+        XCTAssertEqual(HeartCollapse.wobble(at: landing, kept: [true]), 0, accuracy: 1e-9)
+        XCTAssertNotEqual(HeartCollapse.wobble(at: landing + 0.05, kept: [true]), 0)
+        XCTAssertEqual(HeartCollapse.wobble(at: landing + 1, kept: [true]), 0, accuracy: 1e-3)
     }
 
     func testCore_shiversOnlyBetweenSqueezeAndBurst() {
@@ -102,5 +104,79 @@ final class HeartCollapseTests: XCTestCase {
         XCTAssertEqual(HeartCollapse.finished, 1.08 + 1.15, accuracy: 1e-9)
         XCTAssertLessThan(HeartCollapse.handoff, HeartCollapse.finished)
         XCTAssertGreaterThan(HeartCollapse.finished - HeartCollapse.burstStart, BurstField.duration - 1e-9)
+    }
+    func testAbsorbed_countsOnlyKeptPhotos() {
+        let kept = [false, true, false]
+        let everyoneDone = HeartCollapse.landed
+        XCTAssertEqual(HeartCollapse.absorbed(at: everyoneDone, kept: kept), 1, accuracy: 1e-9,
+                       "One keeper landing fills the heart when it's the only keeper")
+        XCTAssertEqual(HeartCollapse.absorbed(at: HeartCollapse.fallTime + 0.001, kept: kept), 1, accuracy: 1e-9)
+        XCTAssertEqual(HeartCollapse.absorbed(at: HeartCollapse.fallTime - 0.001, kept: kept), 0)
+    }
+
+    func testWobble_ignoresDroppedPhotos() {
+        XCTAssertEqual(HeartCollapse.wobble(at: HeartCollapse.fallTime + 0.05, kept: [false]), 0)
+    }
+
+    func testSling_followsTheSameFallUntilItEscapes() {
+        let from = CGPoint(x: 90, y: -280)
+        for x in [0.0, 0.3, 0.6] {
+            let sling = HeartCollapse.sling(from: from, fanRotation: 0.2, progress: x)
+            let fall = HeartCollapse.infall(from: from, fanRotation: 0.2, progress: x)
+            XCTAssertEqual(sling.offset.x, fall.offset.x, accuracy: 1e-9)
+            XCTAssertEqual(sling.offset.y, fall.offset.y, accuracy: 1e-9)
+            XCTAssertEqual(sling.opacity, 1)
+        }
+    }
+
+    func testSling_isContinuousAtTheEscape() {
+        let from = CGPoint(x: 90, y: -280)
+        let at = HeartCollapse.sling(from: from, fanRotation: 0, progress: HeartCollapse.slingEscape)
+        let after = HeartCollapse.sling(from: from, fanRotation: 0, progress: HeartCollapse.slingEscape + 1e-4)
+        XCTAssertEqual(at.offset.x, after.offset.x, accuracy: 0.1)
+        XCTAssertEqual(at.offset.y, after.offset.y, accuracy: 0.1)
+        XCTAssertEqual(at.opacity, after.opacity, accuracy: 1e-3)
+        XCTAssertEqual(at.rotation, after.rotation, accuracy: 1e-3)
+    }
+
+    func testSling_isFlungOutwardAfterTheEscape() {
+        let from = CGPoint(x: 90, y: -280)
+        let distances = [0.62, 0.7, 0.85, 1.0, 1.1].map {
+            let o = HeartCollapse.sling(from: from, fanRotation: 0, progress: $0).offset
+            return hypot(o.x, o.y)
+        }
+        XCTAssertEqual(distances, distances.sorted())
+        XCTAssertGreaterThan(distances.last! - distances.first!, 100)
+    }
+
+    func testSling_spinsExtraOnceItEscapes() {
+        let from = CGPoint(x: 90, y: -280)
+        let at = HeartCollapse.sling(from: from, fanRotation: 0, progress: 0.62).rotation
+        let later = HeartCollapse.sling(from: from, fanRotation: 0, progress: 0.72).rotation
+        XCTAssertEqual(later - at, 0.6, accuracy: 1e-9)
+    }
+
+    func testSling_losesItsColorOnTheWay() {
+        let from = CGPoint(x: 90, y: -280)
+        let before = HeartCollapse.sling(from: from, fanRotation: 0, progress: 0.45)
+        XCTAssertEqual(before.grayscale, 0)
+        XCTAssertEqual(before.brightness, 1)
+        let grey = HeartCollapse.sling(from: from, fanRotation: 0, progress: 0.75)
+        XCTAssertEqual(grey.grayscale, 1, accuracy: 1e-9)
+        XCTAssertEqual(grey.brightness, 0.55, accuracy: 1e-9)
+    }
+
+    func testSling_isGoneByTheEnd() {
+        let from = CGPoint(x: 90, y: -280)
+        XCTAssertEqual(HeartCollapse.sling(from: from, fanRotation: 0, progress: HeartCollapse.slingEnd).opacity, 0, accuracy: 1e-9)
+        XCTAssertEqual(HeartCollapse.sling(from: from, fanRotation: 0, progress: 2).opacity, 0)
+        XCTAssertLessThan(HeartCollapse.slingEnd * HeartCollapse.fallTime + HeartCollapse.fallStart(index: 0, count: 7),
+                          HeartCollapse.burstStart, "Out of sight before the burst")
+    }
+
+    func testInfall_keepsItsColor() {
+        let pose = HeartCollapse.infall(from: CGPoint(x: 0, y: -300), fanRotation: 0, progress: 0.8)
+        XCTAssertEqual(pose.grayscale, 0)
+        XCTAssertEqual(pose.brightness, 1)
     }
 }

@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The session's photos fan out so you see what you caught, then fall into the
-/// heart, which bursts into sparks in their colors.
+/// The session's photos fan out so you see what you caught, then the kept ones
+/// fall into the heart, which bursts into sparks in their colors. Dropped ones
+/// miss it and are slung away.
 ///
 /// The fall and burst are clock-driven from one start time, so they play out
 /// the same however often the view updates.
@@ -19,11 +20,16 @@ struct TumbleAnimationView: View {
         case faded
     }
 
-    private let photos: [UIImage]
-    private let slots: [FanLayout.Slot]
+    private let previews: [UIImage]
+    /// Which previews curation keeps; nil until it has decided.
+    private let verdict: @MainActor () -> [Bool]?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Indices into `previews`, in capture order.
+    @State private var shown: [Int]
     @State private var stages: [Stage]
+    /// Per shown photo, whether it reaches the heart.
+    @State private var kept: [Bool] = []
     @State private var collapsing = false
     @State private var clock = CollapseClock()
     @State private var handedOff = false
@@ -31,19 +37,24 @@ struct TumbleAnimationView: View {
 
     init(
         photos: [UIImage],
+        verdict: @escaping @MainActor () -> [Bool]?,
         heartFrame: CGRect?,
         canvas: CGSize,
         onComplete: @escaping () -> Void,
         onFinished: @escaping () -> Void
     ) {
-        self.photos = FanLayout.photos(from: photos)
-        self.slots = FanLayout.slots(count: self.photos.count)
+        self.previews = photos
+        self.verdict = verdict
         self.heartFrame = heartFrame
         self.canvas = canvas
         self.onComplete = onComplete
         self.onFinished = onFinished
-        _stages = State(initialValue: Array(repeating: .waiting, count: self.photos.count))
+        let shown = FanLayout.shownIndices(count: photos.count, kept: verdict())
+        _shown = State(initialValue: shown)
+        _stages = State(initialValue: Array(repeating: .waiting, count: shown.count))
     }
+
+    private var slots: [FanLayout.Slot] { FanLayout.slots(count: shown.count) }
 
     private var heart: CGPoint {
         heartFrame.map { CGPoint(x: $0.midX, y: $0.midY + HeartGlyph.baselineOffset) }
@@ -57,8 +68,8 @@ struct TumbleAnimationView: View {
                 // Swallows touches meant for the hidden home controls
                 Color.clear.contentShape(Rectangle())
 
-                ForEach(photos.indices, id: \.self) { index in
-                    photo(photos[index])
+                ForEach(stages.indices, id: \.self) { index in
+                    photo(previews[shown[index]])
                         .modifier(pose(for: index, since: since))
                 }
 
@@ -90,19 +101,20 @@ struct TumbleAnimationView: View {
         let slot = slots[index]
         let fanned = CGPoint(x: center.x + slot.offset.width, y: center.y + slot.offset.height)
         if let since {
-            let progress = HeartCollapse.progress(at: since, index: index, count: photos.count)
-            let infall = HeartCollapse.infall(
-                from: CGPoint(x: fanned.x - heart.x, y: fanned.y - heart.y),
-                fanRotation: slot.rotation.radians,
-                progress: progress
-            )
+            let progress = HeartCollapse.progress(at: since, index: index, count: shown.count)
+            let start = CGPoint(x: fanned.x - heart.x, y: fanned.y - heart.y)
+            let fall = kept[index]
+                ? HeartCollapse.infall(from: start, fanRotation: slot.rotation.radians, progress: progress)
+                : HeartCollapse.sling(from: start, fanRotation: slot.rotation.radians, progress: progress)
             return PhotoPose(
-                position: CGPoint(x: heart.x + infall.offset.x, y: heart.y + infall.offset.y),
-                rotation: .radians(infall.rotation),
-                scaleX: infall.scaleX,
-                scaleY: infall.scaleY,
-                stretchAxis: .radians(infall.direction),
-                opacity: infall.opacity
+                position: CGPoint(x: heart.x + fall.offset.x, y: heart.y + fall.offset.y),
+                rotation: .radians(fall.rotation),
+                scaleX: fall.scaleX,
+                scaleY: fall.scaleY,
+                stretchAxis: .radians(fall.direction),
+                opacity: fall.opacity,
+                grayscale: fall.grayscale,
+                brightness: fall.brightness
             )
         }
         switch stages[index] {
@@ -123,9 +135,8 @@ struct TumbleAnimationView: View {
 
     private func drawCore(in context: GraphicsContext, at time: Double) {
         guard time < HeartCollapse.burstStart else { return }
-        let count = photos.count
-        let absorbed = HeartCollapse.absorbed(at: time, count: count)
-        let squash = HeartCollapse.wobble(at: time, count: count) + HeartCollapse.shiver(at: time)
+        let absorbed = HeartCollapse.absorbed(at: time, kept: kept)
+        let squash = HeartCollapse.wobble(at: time, kept: kept) + HeartCollapse.shiver(at: time)
         var core = context
         core.translateBy(x: heart.x, y: heart.y)
         core.scaleBy(x: 1 + squash, y: 1 - squash)
@@ -172,14 +183,20 @@ struct TumbleAnimationView: View {
     }
 
     private func play() async {
-        guard !photos.isEmpty else {
+        guard !previews.isEmpty else {
             handOff()
             onFinished()
             return
         }
-        let shown = photos
+        // Only a long session has to choose, and then it's worth a beat to choose
+        // keepers; the slots are still invisible, so swapping what fills them can't show
+        if previews.count > FanLayout.maxPhotos,
+           let early = await FanLayout.awaitVerdict(within: FanLayout.fanVerdictGrace, read: verdict) {
+            shown = FanLayout.shownIndices(count: previews.count, kept: early)
+        }
+        let fanned = shown.map { previews[$0] }
         let sampling = Task.detached(priority: .userInitiated) {
-            shown.map { BurstField.tint(for: $0.averageColor()) }
+            fanned.map { BurstField.tint(for: $0.averageColor()) }
         }
 
         if reduceMotion {
@@ -194,7 +211,10 @@ struct TumbleAnimationView: View {
 
         await animateAll(to: .fanned, with: .spring(duration: 0.5, bounce: 0.2), staggered: true)
         try? await Task.sleep(for: FanLayout.hold)
-        tints = await sampling.value.map { Color(red: $0.red, green: $0.green, blue: $0.blue) }
+        let decided = await FanLayout.awaitVerdict(within: FanLayout.verdictDeadline, read: verdict)
+        kept = FanLayout.keptFlags(shown: shown, verdict: decided)
+        // Sparks carry only what the heart took in
+        tints = zip(await sampling.value, kept).filter(\.1).map { Color(red: $0.0.red, green: $0.0.green, blue: $0.0.blue) }
         guard !Task.isCancelled else { return }
 
         collapsing = true
@@ -250,14 +270,27 @@ private struct PhotoPose: ViewModifier {
     /// Scaling happens along this axis, so a falling photo stretches along its path.
     let stretchAxis: Angle
     let opacity: Double
+    var grayscale: Double = 0
+    var brightness: Double = 1
 
-    init(position: CGPoint, rotation: Angle, scaleX: CGFloat, scaleY: CGFloat, stretchAxis: Angle, opacity: Double) {
+    init(
+        position: CGPoint,
+        rotation: Angle,
+        scaleX: CGFloat,
+        scaleY: CGFloat,
+        stretchAxis: Angle,
+        opacity: Double,
+        grayscale: Double = 0,
+        brightness: Double = 1
+    ) {
         self.position = position
         self.rotation = rotation
         self.scaleX = scaleX
         self.scaleY = scaleY
         self.stretchAxis = stretchAxis
         self.opacity = opacity
+        self.grayscale = grayscale
+        self.brightness = brightness
     }
 
     init(position: CGPoint, rotation: Angle, scale: CGFloat, opacity: Double) {
@@ -266,6 +299,8 @@ private struct PhotoPose: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .grayscale(grayscale)
+            .colorMultiply(Color(white: brightness))
             .rotationEffect(rotation - stretchAxis)
             .scaleEffect(x: scaleX, y: scaleY)
             .rotationEffect(stretchAxis)

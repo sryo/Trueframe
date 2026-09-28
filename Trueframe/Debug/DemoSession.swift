@@ -14,6 +14,7 @@ enum DemoSession {
         SessionCoordinator(
             engine: DemoCaptureEngine(),
             requestPermissions: { true },
+            scorer: DemoScorer(),
             saver: DemoSaver(),
             proximity: DemoProximitySource()
         )
@@ -103,6 +104,13 @@ final class DemoProximitySource: ProximityEventSource {
         loop?.cancel()
         loop = nil
         continuation.finish()
+    }
+}
+
+/// Drops every third photo, starting with the second, so the demo shows misses.
+private struct DemoScorer: PhotoScoring {
+    func scores(for images: [UIImage?]) async -> [Float] {
+        images.indices.map { $0 % 3 == 1 ? 0.1 : 0.9 }
     }
 }
 

@@ -17,6 +17,9 @@ enum HeartCollapse {
         var scaleX: CGFloat
         var scaleY: CGFloat
         var opacity: Double
+        var grayscale: Double = 0
+        /// Multiplies the photo's color.
+        var brightness: Double = 1
     }
 
     static let fallTime = 0.55
@@ -26,6 +29,10 @@ enum HeartCollapse {
     /// Home rises behind the sparks, so there's no dead air after the burst.
     static let handoff = burstStart + 0.15
     static let finished = burstStart + BurstField.duration
+
+    /// How far into its fall a dropped photo gets before it misses the heart.
+    static let slingEscape = 0.62
+    static let slingEnd = 1.12
 
     static let coreStart: CGFloat = 3
     static let coreCap: CGFloat = 6
@@ -69,17 +76,48 @@ enum HeartCollapse {
         )
     }
 
-    /// The share of the photos that have landed.
-    static func absorbed(at time: Double, count: Int) -> CGFloat {
-        guard count > 0 else { return 0 }
-        let landed = (0..<count).filter { progress(at: time, index: $0, count: count) >= 1 }.count
-        return CGFloat(landed) / CGFloat(count)
+    /// A dropped photo falls in with the rest, loses its color, then misses
+    /// and is flung out of orbit, spinning.
+    static func sling(from start: CGPoint, fanRotation: Double, progress x: Double) -> Infall {
+        let held = min(max(x, 0), slingEscape)
+        var offset = path(from: start, progress: held)
+        if x > slingEscape {
+            let e = (x - slingEscape) * fallTime
+            let d = max(hypot(offset.x, offset.y), 1)
+            let radial = CGPoint(x: offset.x / d, y: offset.y / d)
+            let tangent = CGPoint(x: -radial.y, y: radial.x)
+            let out = CGFloat(900 * e * e + 260 * e)
+            offset.x += (0.6 * tangent.x + 0.8 * radial.x) * out
+            offset.y += (0.6 * tangent.y + 0.8 * radial.y) * out
+        }
+        let scale = 1 - 0.96 * pow(held, 0.8)
+        let grey = min(max((x - 0.45) / 0.3, 0), 1)
+        return Infall(
+            offset: offset,
+            rotation: fanRotation + 1.5 * 2.2 * held * held * held + max(0, x - slingEscape) * 6,
+            direction: 0,
+            scale: scale,
+            scaleX: scale,
+            scaleY: scale,
+            opacity: min(max(1 - (x - slingEscape) / (slingEnd - slingEscape), 0), 1),
+            grayscale: grey,
+            brightness: 1 - 0.45 * grey
+        )
+    }
+
+    /// The share of the kept photos that have landed; dropped ones never do.
+    static func absorbed(at time: Double, kept: [Bool]) -> CGFloat {
+        let keepers = kept.indices.filter { kept[$0] }
+        guard !keepers.isEmpty else { return 0 }
+        let landed = keepers.filter { progress(at: time, index: $0, count: kept.count) >= 1 }.count
+        return CGFloat(landed) / CGFloat(keepers.count)
     }
 
     /// A damped wobble for each landing, as a fraction of the heart's size.
-    static func wobble(at time: Double, count: Int) -> CGFloat {
+    static func wobble(at time: Double, kept: [Bool]) -> CGFloat {
+        let count = kept.count
         guard count > 0 else { return 0 }
-        let sum = (0..<count).reduce(0.0) { sum, index in
+        let sum = kept.indices.filter { kept[$0] }.reduce(0.0) { sum, index in
             let tau = time - fallStart(index: index, count: count) - fallTime
             guard tau >= 0 else { return sum }
             return sum + 4 / Double(count) * exp(-9 * tau) * sin(26 * tau)
