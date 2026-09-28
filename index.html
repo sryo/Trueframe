@@ -22,6 +22,17 @@
     .hero__stage { position: absolute; inset: 0; outline: none; }
     .hero__stage canvas { width: 100%; height: 100%; }
     .hero__stage:focus-visible { box-shadow: inset 0 0 0 2px var(--clay); }
+    /* Lens falloff: the frame sinks toward deep indigo at the edges, like the glow is the only light. */
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 85% 95% at 42% 42%, transparent 55%, rgba(10, 2, 36, 0.42) 85%, rgba(4, 0, 18, 0.72) 100%),
+        linear-gradient(to bottom, rgba(4, 0, 18, 0.28), transparent 18%);
+    }
+    .hero__copy, .prompt, .hero__flash { z-index: 1; }
 
     .hero__copy {
       position: absolute;

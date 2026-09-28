@@ -160,8 +160,8 @@ function start(stage) {
   stage.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  const horizonColor = new THREE.Color('#e6a383');
-  scene.fog = new THREE.Fog(horizonColor.clone(), 16, 150);
+  const horizonColor = new THREE.Color('#f79a45');
+  scene.fog = new THREE.Fog(horizonColor.clone(), 24, 170);
 
   // Everything is unlit and drawn in flat fills. A colour can drift from `a` to `b`
   // across the shape (along an axis in object or world space, or along a per-vertex
@@ -172,22 +172,37 @@ function start(stage) {
   // then gets the same muted dusk grade. `flashUniform` pushes every flat material
   // toward warm white while the phone's flash fires.
   const FLAT_LIGHT = new THREE.Vector3(-0.35, 0.55, -1).normalize();
+  const sunDir = new THREE.Vector3(-0.3, 0.078, -1).normalize();
+  // Screen-print stipple: blends between two tones become a scatter of grain. Cells are
+  // about 2 CSS px at any pixel ratio, and interleaved gradient noise spreads the dots
+  // evenly so they read as fine grain instead of clumps.
+  const STIPPLE_GLSL = `
+    float stippleNoise(vec2 p) { p = floor(p); return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
+    float stipple(float t) {
+      float k = smoothstep(0.3, 0.7, t);
+      return mix(k, step(stippleNoise(gl_FragCoord.xy / ${(2 * renderer.getPixelRatio()).toFixed(1)}), k) * step(0.001, k), 0.5);
+    }`;
   const FLASH_TINT = new THREE.Color('#fff4e0');
   const flashUniform = { value: 0 };
   function flat({
     a, b = a, axis = [0, 1, 0], from = 0, to = 1, space = 'local', facets = true, hard = false, vertexColors = false, map = null,
+    c = null, cFrom = 0, cTo = 1,
   }) {
     const m = new THREE.MeshBasicMaterial({ vertexColors, map });
     const mode = space === 'attr' ? 3 : a === b ? 0 : space === 'world' ? 2 : 1;
     m.defines = { FLAT_MODE: mode };
     if (facets) m.defines.FLAT_FACETS = '';
     if (hard) m.defines.FLAT_HARD = '';
+    if (c) m.defines.FLAT_THIRD = '';
     const uniforms = {
       uFlatA: { value: new THREE.Color(a) },
       uFlatB: { value: new THREE.Color(b) },
       uFlatAxis: { value: new THREE.Vector3(...axis).normalize() },
       uFlatRange: { value: new THREE.Vector2(from, to) },
+      uFlatC: { value: new THREE.Color(c || a) },
+      uFlatRangeC: { value: new THREE.Vector2(cFrom, cTo) },
       uFlatLight: { value: FLAT_LIGHT },
+      uSunDir: { value: sunDir },
       uFlash: flashUniform,
       uFlashTint: { value: FLASH_TINT },
     };
@@ -198,8 +213,10 @@ function start(stage) {
           varying vec3 vFlatWorld;
           varying vec3 vFlatNormal;
           varying float vFlatT;
+          varying float vFlatTC;
           uniform vec3 uFlatAxis;
           uniform vec2 uFlatRange;
+          uniform vec2 uFlatRangeC;
           #if FLAT_MODE == 3
             attribute float aRamp;
           #endif`)
@@ -223,21 +240,31 @@ function start(stage) {
             vFlatT = (aRamp - uFlatRange.x) / (uFlatRange.y - uFlatRange.x);
           #else
             vFlatT = 0.0;
+          #endif
+          #if FLAT_MODE == 2
+            vFlatTC = (dot(flatWp.xyz, uFlatAxis) - uFlatRangeC.x) / (uFlatRangeC.y - uFlatRangeC.x);
+          #else
+            vFlatTC = 0.0;
           #endif`);
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>
           varying vec3 vFlatWorld;
           varying vec3 vFlatNormal;
           varying float vFlatT;
+          varying float vFlatTC;
           uniform vec3 uFlatA;
           uniform vec3 uFlatB;
+          uniform vec3 uFlatC;
           uniform vec3 uFlatLight;
           uniform float uFlash;
           uniform vec3 uFlashTint;
-          // Screen-print stipple: blends between two tones become a scatter of grain.
-          float stippleNoise(vec2 p) { return fract(sin(dot(floor(p), vec2(12.9898, 78.233))) * 43758.5453); }
-          float stipple(float t) { float k = smoothstep(0.35, 0.65, t); return mix(k, step(stippleNoise(gl_FragCoord.xy / 2.0), k) * step(0.001, k), 0.55); }`)
+          uniform vec3 uSunDir;
+          ${STIPPLE_GLSL}`)
         .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `vec4 diffuseColor = vec4(mix(uFlatA, uFlatB, stipple(clamp(vFlatT, 0.0, 1.0))), opacity);
+          #ifdef FLAT_THIRD
+            // A third world-space stop further along the axis.
+            diffuseColor.rgb = mix(diffuseColor.rgb, uFlatC, stipple(clamp(vFlatTC, 0.0, 1.0)));
+          #endif
           #ifdef FLAT_FACETS
             #ifdef FLAT_HARD
               vec3 flatN = normalize(cross(dFdx(vFlatWorld), dFdy(vFlatWorld)));
@@ -249,16 +276,27 @@ function start(stage) {
               float flatLit = smoothstep(-0.6, 0.8, dot(flatN, uFlatLight));
             #endif
             diffuseColor.rgb *= mix(vec3(0.5, 0.52, 0.78), vec3(1.06, 0.94, 0.78), stipple(flatLit));
-            #ifndef FLAT_HARD
-              // Backlit rim: edges turned away from the viewer catch the low sun behind them.
-              vec3 flatV = normalize(cameraPosition - vFlatWorld);
-              float flatRim = pow(1.0 - max(dot(flatN, flatV), 0.0), 3.0) * max(dot(-flatV, uFlatLight), 0.0);
-              diffuseColor.rgb += vec3(1.0, 0.72, 0.48) * stipple(flatRim * 1.6) * 0.35;
-            #endif
           #endif
+          vec3 flatV = normalize(cameraPosition - vFlatWorld);
+          float flatDist = length(cameraPosition - vFlatWorld);
+          // How directly this point sits against the low sun from where the viewer stands.
+          float flatSunward = max(dot(-flatV, uSunDir), 0.0);
           float flatLuma = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
           diffuseColor.rgb = mix(vec3(flatLuma), diffuseColor.rgb, 0.95) * vec3(0.84, 0.77, 0.76);
-          diffuseColor.rgb = clamp((diffuseColor.rgb - 0.4) * 1.06 + 0.4, 0.0, 1.0);`)
+          diffuseColor.rgb = clamp((diffuseColor.rgb - 0.4) * 1.06 + 0.4, 0.0, 1.0);
+          #ifdef FLAT_FACETS
+            // Backlit rim: edges turned away from the viewer catch the low sun behind them,
+            // added after the grade so the sunset colour stays hot.
+            vec3 flatRimN = normalize(vFlatNormal);
+            if (!gl_FrontFacing) flatRimN = -flatRimN;
+            float flatEdge = 1.0 - max(dot(flatRimN, flatV), 0.0);
+            float flatRim = pow(flatEdge, 1.6) * (0.3 + 0.7 * max(dot(-flatV, uFlatLight), 0.0)) * smoothstep(-0.45, 0.35, dot(flatRimN, uFlatLight));
+            flatRim *= 0.8 + 1.2 * pow(flatSunward, 6.0);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.44, 0.26), stipple(flatRim * 2.4) * 0.7);
+          #endif
+          // Veiling glow: anything seen against the sun sinks into its warm haze, more with distance.
+          float flatVeil = pow(flatSunward, 30.0) * smoothstep(30.0, 140.0, flatDist) + pow(flatSunward, 140.0) * 0.3;
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.56, 0.4), stipple(flatVeil) * 0.45);`)
         .replace('#include <opaque_fragment>', `outgoingLight = mix(outgoingLight, uFlashTint, uFlash);
           #include <opaque_fragment>`);
     };
@@ -270,20 +308,18 @@ function start(stage) {
   camera.position.copy(VIEW_CAM_POS);
   camera.lookAt(VIEW_CAM_TARGET);
 
-  const sunDir = new THREE.Vector3(-0.3, 0.078, -1).normalize();
-
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(500, 48, 24),
     new THREE.ShaderMaterial({
       uniforms: {
         band0: { value: horizonColor.clone() },
-        band1: { value: new THREE.Color('#de947f') },
-        band2: { value: new THREE.Color('#c67f86') },
-        band3: { value: new THREE.Color('#8f6a8a') },
-        glow1: { value: new THREE.Color('#f0a476') },
-        glow2: { value: new THREE.Color('#f8c28c') },
-        sunCol: { value: new THREE.Color('#fbeed6') },
-        haloCol: { value: new THREE.Color('#f0cfb4') },
+        band1: { value: new THREE.Color('#f25a6a') },
+        band2: { value: new THREE.Color('#d63fd0') },
+        band3: { value: new THREE.Color('#4a25c0') },
+        glow1: { value: new THREE.Color('#ffb060') },
+        glow2: { value: new THREE.Color('#ffd9a0') },
+        sunCol: { value: new THREE.Color('#fff4e2') },
+        haloCol: { value: new THREE.Color('#ffe2b8') },
         sunDir: { value: sunDir },
       },
       vertexShader: /* glsl */ `
@@ -303,10 +339,9 @@ function start(stage) {
         uniform vec3 glow2;
         uniform vec3 sunDir;
         varying vec3 vDir;
-        float stippleNoise(vec2 p) { return fract(sin(dot(floor(p), vec2(12.9898, 78.233))) * 43758.5453); }
-        float stipple(float t) { float k = smoothstep(0.35, 0.65, t); return mix(k, step(stippleNoise(gl_FragCoord.xy / 2.0), k) * step(0.001, k), 0.55); }
+        ${STIPPLE_GLSL}
         // Colour bands meeting in a stippled seam.
-        float edge(float at, float y) { return stipple(smoothstep(at - 0.03, at + 0.03, y)); }
+        float edge(float at, float y) { return stipple(smoothstep(at - 0.045, at + 0.045, y)); }
         void main() {
           vec3 d = normalize(vDir);
           float y = max(d.y, 0.0);
@@ -317,10 +352,16 @@ function start(stage) {
           col *= 0.88;
           float s = dot(d, sunDir);
           float ss = max(s, 0.0);
-          col = mix(col, glow1, stipple(pow(ss, 14.0)) * 0.75);
-          col = mix(col, glow2, stipple(pow(ss, 90.0)) * 0.9);
-          col = mix(col, haloCol, smoothstep(0.9975, 0.9985, s) * 0.7);
+          // Light bleeding out of the sun: a smooth wash that warms the bands around it,
+          // strongest along the horizon where the low sun sits.
+          float azim = max(dot(normalize(d.xz + vec2(1e-5)), normalize(sunDir.xz)), 0.0);
+          float horizonGlow = (1.0 - smoothstep(0.0, 0.16, y)) * pow(azim, 6.0);
+          col += glow1 * (pow(ss, 5.0) * 0.22 + horizonGlow * 0.18);
+          col = mix(col, glow1, stipple(pow(ss, 16.0)) * 0.7);
+          col = mix(col, glow2, stipple(pow(ss, 70.0)) * 0.85);
+          col = mix(col, haloCol, smoothstep(0.994, 0.9986, s) * 0.8);
           col = mix(col, sunCol, smoothstep(0.99895, 0.99905, s));
+          col += sunCol * smoothstep(0.99895, 0.9999, s) * 0.15;
           gl_FragColor = vec4(col, 1.0);
           #include <colorspace_fragment>
         }`,
@@ -350,7 +391,7 @@ function start(stage) {
   const groundTex = canvasTexture(256, (c, s) => {
     c.fillStyle = '#ffffff';
     c.fillRect(0, 0, s, s);
-    c.fillStyle = '#c8dcb0';
+    c.fillStyle = '#c4b4e4';
     for (let i = 0; i < 14; i++) {
       const x = rand(0, s), y = rand(0, s), rx = rand(10, 30), ry = rx * rand(0.5, 0.9), r = rand(0, TAU);
       for (const [ox, oy] of [[0, 0], [s, 0], [-s, 0], [0, s], [0, -s]]) {
@@ -363,13 +404,13 @@ function start(stage) {
   groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
   groundTex.repeat.set(40, 40);
   groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const groundMat = flat({ a: '#284539', b: '#a3a64a', axis: [0, 0, -1], from: 9, to: 24, space: 'world', facets: false, map: groundTex });
+  const groundMat = flat({ a: '#2c1472', b: '#5424a0', c: '#c23cc0', axis: [0, 0, -1], from: 3, to: 13, cFrom: 15, cTo: 29, space: 'world', facets: false, map: groundTex });
   const groundCompile = groundMat.onBeforeCompile;
   groundMat.onBeforeCompile = (shader, r) => {
     groundCompile(shader, r);
     shader.uniforms.uShadows = shadowUniform;
     shader.uniforms.uShadowDir = { value: new THREE.Vector2(SHADOW_DIR.x, SHADOW_DIR.z) };
-    shader.uniforms.uPatch = { value: new THREE.Color('#c8dcb0') };
+    shader.uniforms.uPatch = { value: new THREE.Color('#c4b4e4') };
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform vec4 uShadows[${MAX_SHADOWS}];
@@ -425,7 +466,7 @@ function start(stage) {
     bladeGeo.setIndex(idx);
 
     // Blades take the ground's colour where they stand, a little darker at the root and lighter at the tip.
-    const grassMat = flat({ a: '#2f4d3d', b: '#a8aa4c', axis: [0, 0, -1], from: 9, to: 24, space: 'world', facets: false, vertexColors: true });
+    const grassMat = flat({ a: '#3a1c84', b: '#642cb2', c: '#cc48cc', axis: [0, 0, -1], from: 3, to: 13, cFrom: 15, cTo: 29, space: 'world', facets: false, vertexColors: true });
     grassMat.side = THREE.DoubleSide;
     const flatCompile = grassMat.onBeforeCompile;
     grassMat.onBeforeCompile = (shader, r) => {
@@ -470,8 +511,9 @@ function start(stage) {
 
   // Trees and hills in the middle and far distance.
   {
-    const trunkMat = flat({ a: '#5a3a30' });
-    const leafMats = ['#3f6a44', '#466f46', '#39603f'].map((c) => flat({ a: c }));
+    const trunkMat = flat({ a: '#1c0c40' });
+    const leafNear = ['#33188a', '#401c9c', '#2c1480'].map((c) => new THREE.Color(c));
+    const leafFar = new THREE.Color('#a24cb4'), trunkFar = new THREE.Color('#7a2e90');
     const trunkGeo = new THREE.CylinderGeometry(0.1, 0.16, 2.2, 6);
     const leafGeo = new THREE.IcosahedronGeometry(1.3, 0);
     const trees = [[-10, -17, 1.1], [-13.5, -21, 1.4], [7.5, -18, 1], [11, -26, 1.5], [-4, -30, 1.2], [18, -40, 1.8], [-22, -38, 1.7]];
@@ -479,7 +521,10 @@ function start(stage) {
     trees.forEach(([x, z, s], i) => {
       setShadow(i, x, z, 2 * s, 15 * s);
       const tree = new THREE.Group();
-      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+      // Trees further off fade toward the haze.
+      const haze = smoothstep(17, 34, -z) * 0.85;
+      const leafMats = leafNear.map((c) => flat({ a: '#' + c.clone().lerp(leafFar, haze).getHexString() }));
+      const trunk = new THREE.Mesh(trunkGeo, haze > 0 ? flat({ a: '#' + new THREE.Color('#1c0c40').lerp(trunkFar, haze).getHexString() }) : trunkMat);
       trunk.position.y = 1.1;
       tree.add(trunk);
       for (let j = 0; j < 3; j++) {
@@ -499,7 +544,7 @@ function start(stage) {
       [-140, -110, 70, 7, 25], [-60, -95, 55, 5, 22], [10, -120, 80, 6, 26], [90, -100, 60, 6, 24],
       [170, -120, 70, 8, 30], [-25, -70, 30, 3.5, 14], [45, -65, 28, 3, 12],
     ];
-    const near = new THREE.Color('#b87a78'), far = new THREE.Color('#d49a8e');
+    const near = new THREE.Color('#9c2a90'), far = new THREE.Color('#f6a28a');
     for (const [x, z, sx, sy, sz] of hills) {
       const hill = new THREE.Mesh(hillGeo, flat({ a: '#' + near.clone().lerp(far, smoothstep(60, 120, -z)).getHexString(), facets: false }));
       hill.position.set(x, 0, z);
@@ -612,7 +657,7 @@ function start(stage) {
 
   // A cartoon right hand holding the phone from behind: palm on the back, thumb over the
   // +x edge, three fingers curled around the -x edge. The screen faces +z in phone space.
-  const skinMat = flat({ a: '#ee9ba8', hard: true });
+  const skinMat = flat({ a: '#ff8fbe', hard: true });
   const hand = new THREE.Group();
   phone.add(hand);
   const UP = new THREE.Vector3(0, 1, 0);
@@ -654,7 +699,7 @@ function start(stage) {
   const hoseRamp = new Float32Array(hoseUv.count);
   for (let i = 0; i < hoseUv.count; i++) hoseRamp[i] = hoseUv.getX(i);
   hoseGeo.setAttribute('aRamp', new THREE.BufferAttribute(hoseRamp, 1));
-  const hose = new THREE.Mesh(hoseGeo, flat({ a: '#b98ac4', b: '#ee9ba8', space: 'world', hard: true }));
+  const hose = new THREE.Mesh(hoseGeo, flat({ a: '#7a48f0', b: '#ff8fbe', space: 'world', hard: true }));
   hose.frustumCulled = false;
   scene.add(hose);
 
@@ -1655,9 +1700,10 @@ function start(stage) {
 
     phone.visible = false;
     hose.visible = false;
-    // A flash only fills a little at this distance, so the photo gets a softer wash than the screen.
+    // The flash barely reaches the meadow at this distance, so the photo keeps the dusk colours;
+    // even a faint linear wash turns the deep indigo foreground grey.
     const screenFlash = flashUniform.value;
-    flashUniform.value = Math.min(screenFlash, 0.12);
+    flashUniform.value = 0;
     renderer.setRenderTarget(hdrRT);
     renderer.render(scene, captureCam);
     flashUniform.value = screenFlash;
