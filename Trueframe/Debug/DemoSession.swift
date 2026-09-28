@@ -49,7 +49,28 @@ final class DemoCaptureEngine: CaptureEngineProtocol {
         continuation = nil
     }
 
+    /// Frames from a real clip, when DEMO_PHOTOS names a folder of JPEGs, so screenshots show a
+    /// real moment instead of color swatches.
+    private static let photos: [UIImage] = {
+        guard let folder = ProcessInfo.processInfo.environment["DEMO_PHOTOS"],
+              let names = try? FileManager.default.contentsOfDirectory(atPath: folder) else { return [] }
+        return names.filter { $0.hasSuffix(".jpg") }.sorted().compactMap { name in
+            UIImage(contentsOfFile: (folder as NSString).appendingPathComponent(name))?
+                .preparingThumbnail(of: CGSize(width: 540, height: 960))
+        }
+    }()
+
     private static func asset(_ index: Int) -> CapturedAsset {
+        if !photos.isEmpty {
+            let preview = photos[index % photos.count]
+            return CapturedAsset(
+                id: UUID(),
+                fileData: preview.jpegData(compressionQuality: 0.8) ?? Data(),
+                preview: preview,
+                isProxy: false,
+                capturedAt: .now
+            )
+        }
         let hue = (Double(index) * 0.13).truncatingRemainder(dividingBy: 1)
         let size = CGSize(width: 240, height: 320)
         let preview = UIGraphicsImageRenderer(size: size).image { context in
@@ -74,8 +95,8 @@ final class DemoCaptureEngine: CaptureEngineProtocol {
 final class DemoProximitySource: ProximityEventSource {
     struct Schedule {
         var firstCover: Duration = .seconds(2)
-        var covered: Duration = .seconds(4)
-        var period: Duration = .seconds(10)
+        var covered: Duration = .seconds(ProcessInfo.processInfo.environment["DEMO_COVER_SECONDS"].flatMap(Double.init) ?? 4)
+        var period: Duration = .seconds((ProcessInfo.processInfo.environment["DEMO_COVER_SECONDS"].flatMap(Double.init) ?? 4) + 6)
     }
 
     let events: AsyncStream<Bool>
