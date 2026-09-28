@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 // ---------------------------------------------------------------------------
@@ -148,11 +147,8 @@ function start(stage) {
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1;
+  renderer.toneMapping = THREE.NoToneMapping;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const canvas = renderer.domElement;
   canvas.dataset.hero = '';
@@ -164,8 +160,110 @@ function start(stage) {
   stage.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  const horizonColor = new THREE.Color('#f0b089');
+  const horizonColor = new THREE.Color('#e6a383');
   scene.fog = new THREE.Fog(horizonColor.clone(), 16, 150);
+
+  // Everything is unlit and drawn in flat fills. A colour can drift from `a` to `b`
+  // across the shape (along an axis in object or world space, or along a per-vertex
+  // `aRamp` attribute) to shift hue, never to model volume. With facets on, each face
+  // is shaded softly between a warm lit tone and a cool dusk shadow by how much it faces
+  // the low sun behind the scene; `hard` snaps that to exactly two tones per face for
+  // the illustrated hand and arm. Every flat colour
+  // then gets the same muted dusk grade. `flashUniform` pushes every flat material
+  // toward warm white while the phone's flash fires.
+  const FLAT_LIGHT = new THREE.Vector3(-0.35, 0.55, -1).normalize();
+  const FLASH_TINT = new THREE.Color('#fff4e0');
+  const flashUniform = { value: 0 };
+  function flat({
+    a, b = a, axis = [0, 1, 0], from = 0, to = 1, space = 'local', facets = true, hard = false, vertexColors = false, map = null,
+  }) {
+    const m = new THREE.MeshBasicMaterial({ vertexColors, map });
+    const mode = space === 'attr' ? 3 : a === b ? 0 : space === 'world' ? 2 : 1;
+    m.defines = { FLAT_MODE: mode };
+    if (facets) m.defines.FLAT_FACETS = '';
+    if (hard) m.defines.FLAT_HARD = '';
+    const uniforms = {
+      uFlatA: { value: new THREE.Color(a) },
+      uFlatB: { value: new THREE.Color(b) },
+      uFlatAxis: { value: new THREE.Vector3(...axis).normalize() },
+      uFlatRange: { value: new THREE.Vector2(from, to) },
+      uFlatLight: { value: FLAT_LIGHT },
+      uFlash: flashUniform,
+      uFlashTint: { value: FLASH_TINT },
+    };
+    m.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, uniforms);
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', `#include <common>
+          varying vec3 vFlatWorld;
+          varying vec3 vFlatNormal;
+          varying float vFlatT;
+          uniform vec3 uFlatAxis;
+          uniform vec2 uFlatRange;
+          #if FLAT_MODE == 3
+            attribute float aRamp;
+          #endif`)
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          vec4 flatWp = vec4(transformed, 1.0);
+          #ifdef USE_INSTANCING
+            flatWp = instanceMatrix * flatWp;
+          #endif
+          flatWp = modelMatrix * flatWp;
+          vFlatWorld = flatWp.xyz;
+          vec3 flatObjN = normal;
+          #ifdef USE_INSTANCING
+            flatObjN = mat3(instanceMatrix) * flatObjN;
+          #endif
+          vFlatNormal = normalize(mat3(modelMatrix) * flatObjN);
+          #if FLAT_MODE == 1
+            vFlatT = (dot(transformed, uFlatAxis) - uFlatRange.x) / (uFlatRange.y - uFlatRange.x);
+          #elif FLAT_MODE == 2
+            vFlatT = (dot(flatWp.xyz, uFlatAxis) - uFlatRange.x) / (uFlatRange.y - uFlatRange.x);
+          #elif FLAT_MODE == 3
+            vFlatT = (aRamp - uFlatRange.x) / (uFlatRange.y - uFlatRange.x);
+          #else
+            vFlatT = 0.0;
+          #endif`);
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>
+          varying vec3 vFlatWorld;
+          varying vec3 vFlatNormal;
+          varying float vFlatT;
+          uniform vec3 uFlatA;
+          uniform vec3 uFlatB;
+          uniform vec3 uFlatLight;
+          uniform float uFlash;
+          uniform vec3 uFlashTint;
+          // Screen-print stipple: blends between two tones become a scatter of grain.
+          float stippleNoise(vec2 p) { return fract(sin(dot(floor(p), vec2(12.9898, 78.233))) * 43758.5453); }
+          float stipple(float t) { float k = smoothstep(0.35, 0.65, t); return mix(k, step(stippleNoise(gl_FragCoord.xy / 2.0), k) * step(0.001, k), 0.55); }`)
+        .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `vec4 diffuseColor = vec4(mix(uFlatA, uFlatB, stipple(clamp(vFlatT, 0.0, 1.0))), opacity);
+          #ifdef FLAT_FACETS
+            #ifdef FLAT_HARD
+              vec3 flatN = normalize(cross(dFdx(vFlatWorld), dFdy(vFlatWorld)));
+              if (dot(flatN, cameraPosition - vFlatWorld) < 0.0) flatN = -flatN;
+              float flatLit = step(0.0, dot(flatN, uFlatLight));
+            #else
+              vec3 flatN = normalize(vFlatNormal);
+              if (!gl_FrontFacing) flatN = -flatN;
+              float flatLit = smoothstep(-0.6, 0.8, dot(flatN, uFlatLight));
+            #endif
+            diffuseColor.rgb *= mix(vec3(0.5, 0.52, 0.78), vec3(1.06, 0.94, 0.78), stipple(flatLit));
+            #ifndef FLAT_HARD
+              // Backlit rim: edges turned away from the viewer catch the low sun behind them.
+              vec3 flatV = normalize(cameraPosition - vFlatWorld);
+              float flatRim = pow(1.0 - max(dot(flatN, flatV), 0.0), 3.0) * max(dot(-flatV, uFlatLight), 0.0);
+              diffuseColor.rgb += vec3(1.0, 0.72, 0.48) * stipple(flatRim * 1.6) * 0.35;
+            #endif
+          #endif
+          float flatLuma = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+          diffuseColor.rgb = mix(vec3(flatLuma), diffuseColor.rgb, 0.95) * vec3(0.84, 0.77, 0.76);
+          diffuseColor.rgb = clamp((diffuseColor.rgb - 0.4) * 1.06 + 0.4, 0.0, 1.0);`)
+        .replace('#include <opaque_fragment>', `outgoingLight = mix(outgoingLight, uFlashTint, uFlash);
+          #include <opaque_fragment>`);
+    };
+    return m;
+  }
 
   const camera = new THREE.PerspectiveCamera(34, 1, 0.02, 700);
   camera.position.copy(VIEW_CAM_POS);
@@ -177,10 +275,14 @@ function start(stage) {
     new THREE.SphereGeometry(500, 48, 24),
     new THREE.ShaderMaterial({
       uniforms: {
-        zenith: { value: new THREE.Color('#1d2544') },
-        mid: { value: new THREE.Color('#6b5a78') },
-        horizon: { value: horizonColor.clone() },
-        below: { value: new THREE.Color('#d99a78') },
+        band0: { value: horizonColor.clone() },
+        band1: { value: new THREE.Color('#de947f') },
+        band2: { value: new THREE.Color('#c67f86') },
+        band3: { value: new THREE.Color('#8f6a8a') },
+        glow1: { value: new THREE.Color('#f0a476') },
+        glow2: { value: new THREE.Color('#f8c28c') },
+        sunCol: { value: new THREE.Color('#fbeed6') },
+        haloCol: { value: new THREE.Color('#f0cfb4') },
         sunDir: { value: sunDir },
       },
       vertexShader: /* glsl */ `
@@ -190,24 +292,34 @@ function start(stage) {
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }`,
       fragmentShader: /* glsl */ `
-        uniform vec3 zenith;
-        uniform vec3 mid;
-        uniform vec3 horizon;
-        uniform vec3 below;
+        uniform vec3 band0;
+        uniform vec3 band1;
+        uniform vec3 band2;
+        uniform vec3 band3;
+        uniform vec3 sunCol;
+        uniform vec3 haloCol;
+        uniform vec3 glow1;
+        uniform vec3 glow2;
         uniform vec3 sunDir;
         varying vec3 vDir;
+        float stippleNoise(vec2 p) { return fract(sin(dot(floor(p), vec2(12.9898, 78.233))) * 43758.5453); }
+        float stipple(float t) { float k = smoothstep(0.35, 0.65, t); return mix(k, step(stippleNoise(gl_FragCoord.xy / 2.0), k) * step(0.001, k), 0.55); }
+        // Colour bands meeting in a stippled seam.
+        float edge(float at, float y) { return stipple(smoothstep(at - 0.03, at + 0.03, y)); }
         void main() {
           vec3 d = normalize(vDir);
-          vec3 col;
-          if (d.y >= 0.0) {
-            float t = sqrt(d.y);
-            col = mix(horizon, mid, smoothstep(0.02, 0.45, t));
-            col = mix(col, zenith, smoothstep(0.4, 0.95, t));
-          } else {
-            col = mix(horizon, below, smoothstep(0.0, 0.06, -d.y));
-          }
-          float s = max(dot(d, sunDir), 0.0);
-          col += vec3(1.0, 0.55, 0.3) * (pow(s, 6.0) * 0.3 + pow(s, 48.0) * 0.45);
+          float y = max(d.y, 0.0);
+          vec3 col = band0;
+          col = mix(col, band1, edge(0.07, y));
+          col = mix(col, band2, edge(0.2, y));
+          col = mix(col, band3, edge(0.42, y));
+          col *= 0.88;
+          float s = dot(d, sunDir);
+          float ss = max(s, 0.0);
+          col = mix(col, glow1, stipple(pow(ss, 14.0)) * 0.75);
+          col = mix(col, glow2, stipple(pow(ss, 90.0)) * 0.9);
+          col = mix(col, haloCol, smoothstep(0.9975, 0.9985, s) * 0.7);
+          col = mix(col, sunCol, smoothstep(0.99895, 0.99905, s));
           gl_FragColor = vec4(col, 1.0);
           #include <colorspace_fragment>
         }`,
@@ -220,79 +332,82 @@ function start(stage) {
   sky.frustumCulled = false;
   scene.add(sky);
 
-  scene.add(new THREE.HemisphereLight('#b8a6c9', '#3b3222', 1.1));
 
-  const dogCenter = new THREE.Vector3(-2.2, 0, -12);
-  const sun = new THREE.DirectionalLight('#ffc79a', 2.5);
-  sun.position.copy(dogCenter).addScaledVector(new THREE.Vector3(-0.35, 0.28, -1).normalize(), 30);
-  sun.target.position.copy(dogCenter);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
-  Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 10, far: 50 });
-  sun.shadow.camera.updateProjectionMatrix();
-  sun.shadow.bias = -0.0004;
-  sun.shadow.normalBias = 0.02;
-  scene.add(sun, sun.target);
-
-  // Ground: large-scale tone variation in vertex colours, fine speckle in a tiling texture.
-  const groundGeo = new THREE.PlaneGeometry(600, 600, 160, 160);
-  groundGeo.rotateX(-Math.PI / 2);
-  {
-    const pos = groundGeo.attributes.position;
-    const colors = new Float32Array(pos.count * 3);
-    const base = new THREE.Color('#4f5a38');
-    const warm = new THREE.Color('#6e6a3a');
-    const dark = new THREE.Color('#3c4629');
-    const c = new THREE.Color();
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), z = pos.getZ(i);
-      const n1 = valueNoise(x * 0.08, z * 0.08);
-      const n2 = valueNoise(x * 0.35 + 17, z * 0.35 - 9);
-      c.copy(base).lerp(warm, smoothstep(0.45, 0.8, n1) * 0.8).lerp(dark, smoothstep(0.55, 0.9, n2) * 0.5);
-      colors[i * 3] = c.r;
-      colors[i * 3 + 1] = c.g;
-      colors[i * 3 + 2] = c.b;
-    }
-    groundGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  // Long shadows pointing away from the sun, drawn by the ground itself: under a shadow the
+  // ground takes the same darkening as its darker patches, never anything darker. Each entry
+  // is an ellipse (centre x, centre z, half width, half length) along SHADOW_DIR.
+  const SHADOW_DIR = new THREE.Vector3(0.1, 0, 1).normalize();
+  const MAX_SHADOWS = 8;
+  const shadowUniform = { value: Array.from({ length: MAX_SHADOWS }, () => new THREE.Vector4(0, 0, 0, 0)) };
+  function setShadow(i, x, z, width, length) {
+    shadowUniform.value[i].set(x + SHADOW_DIR.x * length * 0.42, z + SHADOW_DIR.z * length * 0.42, width / 2, length / 2);
   }
+
+  // Ground: a lime to olive ramp from the horizon toward the viewer, dotted with flat patches.
+  const groundGeo = new THREE.PlaneGeometry(600, 600, 1, 1);
+  groundGeo.rotateX(-Math.PI / 2);
   const groundTex = canvasTexture(256, (c, s) => {
-    c.fillStyle = '#e6e6e6';
+    c.fillStyle = '#ffffff';
     c.fillRect(0, 0, s, s);
-    for (let i = 0; i < 1600; i++) {
-      const v = Math.floor(rand(170, 255));
-      c.fillStyle = `rgba(${v},${v},${v},0.3)`;
-      c.beginPath();
-      c.ellipse(rand(0, s), rand(0, s), rand(1, 5), rand(1, 3), rand(0, TAU), 0, TAU);
-      c.fill();
+    c.fillStyle = '#c8dcb0';
+    for (let i = 0; i < 14; i++) {
+      const x = rand(0, s), y = rand(0, s), rx = rand(10, 30), ry = rx * rand(0.5, 0.9), r = rand(0, TAU);
+      for (const [ox, oy] of [[0, 0], [s, 0], [-s, 0], [0, s], [0, -s]]) {
+        c.beginPath();
+        c.ellipse(x + ox, y + oy, rx, ry, r, 0, TAU);
+        c.fill();
+      }
     }
   });
   groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
-  groundTex.repeat.set(80, 80);
+  groundTex.repeat.set(40, 40);
   groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const ground = new THREE.Mesh(
-    groundGeo,
-    new THREE.MeshStandardMaterial({ vertexColors: true, map: groundTex, roughness: 1 }),
-  );
-  ground.receiveShadow = true;
+  const groundMat = flat({ a: '#284539', b: '#a3a64a', axis: [0, 0, -1], from: 9, to: 24, space: 'world', facets: false, map: groundTex });
+  const groundCompile = groundMat.onBeforeCompile;
+  groundMat.onBeforeCompile = (shader, r) => {
+    groundCompile(shader, r);
+    shader.uniforms.uShadows = shadowUniform;
+    shader.uniforms.uShadowDir = { value: new THREE.Vector2(SHADOW_DIR.x, SHADOW_DIR.z) };
+    shader.uniforms.uPatch = { value: new THREE.Color('#c8dcb0') };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        uniform vec4 uShadows[${MAX_SHADOWS}];
+        uniform vec2 uShadowDir;
+        uniform vec3 uPatch;`)
+      .replace('#include <map_fragment>', `vec3 groundBase = diffuseColor.rgb;
+        #include <map_fragment>
+        vec2 shadowSide = vec2(uShadowDir.y, -uShadowDir.x);
+        bool shaded = false;
+        for (int i = 0; i < ${MAX_SHADOWS}; i++) {
+          vec4 e = uShadows[i];
+          if (e.z <= 0.0) continue;
+          vec2 d = vFlatWorld.xz - e.xy;
+          vec2 q = vec2(dot(d, shadowSide) / e.z, dot(d, uShadowDir) / e.w);
+          if (dot(q, q) < 1.0) shaded = true;
+        }
+        if (shaded) diffuseColor.rgb = groundBase * uPatch;`);
+  };
+  const ground = new THREE.Mesh(groundGeo, groundMat);
   scene.add(ground);
 
   // Grass: tapered blades in tufts, swaying in the vertex shader.
   const grassTime = { value: 0 };
   {
     const segs = 4;
+    const bladeBase = new THREE.Color(0.8, 0.8, 0.8), bladeTip = new THREE.Color(1.25, 1.22, 1.1);
     const pos = [], col = [], nor = [], idx = [];
     for (let i = 0; i <= segs; i++) {
       const y = i / segs;
       const w = 0.06 * Math.pow(1 - y, 0.8);
       const z = y * y * 0.18;
-      const shade = lerp(0.38, 1, Math.pow(y, 0.7));
+      const c = bladeBase.clone().lerp(bladeTip, Math.pow(y, 0.8));
       if (i < segs) {
         pos.push(-w, y, z, w, y, z);
-        col.push(shade, shade, shade, shade, shade, shade);
+        col.push(c.r, c.g, c.b, c.r, c.g, c.b);
         nor.push(0, 1, 0, 0, 1, 0);
       } else {
         pos.push(0, y, z);
-        col.push(shade, shade, shade);
+        col.push(c.r, c.g, c.b);
         nor.push(0, 1, 0);
       }
     }
@@ -308,8 +423,12 @@ function start(stage) {
     bladeGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     bladeGeo.setIndex(idx);
 
-    const grassMat = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.9 });
-    grassMat.onBeforeCompile = (shader) => {
+    // Blades take the ground's colour where they stand, a little darker at the root and lighter at the tip.
+    const grassMat = flat({ a: '#2f4d3d', b: '#a8aa4c', axis: [0, 0, -1], from: 9, to: 24, space: 'world', facets: false, vertexColors: true });
+    grassMat.side = THREE.DoubleSide;
+    const flatCompile = grassMat.onBeforeCompile;
+    grassMat.onBeforeCompile = (shader, r) => {
+      flatCompile(shader, r);
       shader.uniforms.uTime = grassTime;
       shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace(
         '#include <begin_vertex>',
@@ -326,7 +445,7 @@ function start(stage) {
 
     const count = 6000;
     const grass = new THREE.InstancedMesh(bladeGeo, grassMat, count);
-    const palette = ['#5a6534', '#6d7039', '#7f7a3e', '#4b5630', '#8c8446'].map((h) => new THREE.Color(h));
+    const palette = ['#ffffff', '#f4f6ee', '#eef2e6', '#fbf8ee'].map((h) => new THREE.Color(h));
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
     const p = new THREE.Vector3(), sc = new THREE.Vector3();
     let k = 0;
@@ -350,71 +469,48 @@ function start(stage) {
 
   // Trees and hills in the middle and far distance.
   {
-    const trunkMat = new THREE.MeshStandardMaterial({ color: '#4a3526', roughness: 0.9, flatShading: true });
-    const leafMats = ['#3e4a2a', '#4a5530', '#36422a'].map(
-      (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, flatShading: true }),
-    );
+    const trunkMat = flat({ a: '#5a3a30' });
+    const leafMats = ['#3f6a44', '#466f46', '#39603f'].map((c) => flat({ a: c }));
     const trunkGeo = new THREE.CylinderGeometry(0.1, 0.16, 2.2, 6);
     const leafGeo = new THREE.IcosahedronGeometry(1.3, 0);
     const trees = [[-10, -17, 1.1], [-13.5, -21, 1.4], [7.5, -18, 1], [11, -26, 1.5], [-4, -30, 1.2], [18, -40, 1.8], [-22, -38, 1.7]];
-    for (const [x, z, s] of trees) {
+    // The sun sits low behind the trees, so their shadows stretch toward the viewer.
+    trees.forEach(([x, z, s], i) => {
+      setShadow(i, x, z, 2 * s, 15 * s);
       const tree = new THREE.Group();
       const trunk = new THREE.Mesh(trunkGeo, trunkMat);
       trunk.position.y = 1.1;
       tree.add(trunk);
-      for (let i = 0; i < 3; i++) {
-        const leaf = new THREE.Mesh(leafGeo, leafMats[i]);
-        leaf.position.set(rand(-0.5, 0.5), 2.6 + i * 0.55, rand(-0.5, 0.5));
-        leaf.scale.setScalar(rand(0.8, 1.15) * (1 - i * 0.18));
+      for (let j = 0; j < 3; j++) {
+        const leaf = new THREE.Mesh(leafGeo, leafMats[j]);
+        leaf.position.set(rand(-0.5, 0.5), 2.6 + j * 0.55, rand(-0.5, 0.5));
+        leaf.scale.setScalar(rand(0.8, 1.15) * (1 - j * 0.18));
         leaf.rotation.set(rand(0, TAU), rand(0, TAU), 0);
         tree.add(leaf);
       }
       tree.position.set(x, 0, z);
       tree.scale.setScalar(s);
       scene.add(tree);
-    }
+    });
 
     const hillGeo = new THREE.SphereGeometry(1, 24, 12);
     const hills = [
       [-140, -110, 70, 7, 25], [-60, -95, 55, 5, 22], [10, -120, 80, 6, 26], [90, -100, 60, 6, 24],
       [170, -120, 70, 8, 30], [-25, -70, 30, 3.5, 14], [45, -65, 28, 3, 12],
     ];
-    const near = new THREE.Color('#55543f'), far = new THREE.Color('#6f6552');
+    const near = new THREE.Color('#b87a78'), far = new THREE.Color('#d49a8e');
     for (const [x, z, sx, sy, sz] of hills) {
-      const hill = new THREE.Mesh(
-        hillGeo,
-        new THREE.MeshStandardMaterial({ color: near.clone().lerp(far, smoothstep(60, 120, -z)), roughness: 1 }),
-      );
+      const hill = new THREE.Mesh(hillGeo, flat({ a: '#' + near.clone().lerp(far, smoothstep(60, 120, -z)).getHexString(), facets: false }));
       hill.position.set(x, 0, z);
       hill.scale.set(sx, sy, sz);
       scene.add(hill);
     }
 
-    const sunTex = canvasTexture(256, (c, s) => {
-      const gr = c.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-      gr.addColorStop(0, 'rgba(255,248,230,1)');
-      gr.addColorStop(0.07, 'rgba(255,232,195,1)');
-      gr.addColorStop(0.16, 'rgba(255,190,120,0.5)');
-      gr.addColorStop(0.45, 'rgba(255,150,90,0.12)');
-      gr.addColorStop(1, 'rgba(255,140,80,0)');
-      c.fillStyle = gr;
-      c.fillRect(0, 0, s, s);
-    });
-    const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: sunTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false,
-    }));
-    sunSprite.position.copy(sunDir).multiplyScalar(420);
-    sunSprite.scale.setScalar(110);
-    scene.add(sunSprite);
   }
 
   // -------------------------------------------------------------------------
   // Phone model
   // -------------------------------------------------------------------------
-
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  pmrem.dispose();
 
   const uiCanvas = document.createElement('canvas');
   uiCanvas.width = SW * PT;
@@ -424,30 +520,13 @@ function start(stage) {
   uiTex.colorSpace = THREE.SRGBColorSpace;
   uiTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 
-  const frameMat = new THREE.MeshPhysicalMaterial({
-    color: '#95635B', metalness: 1, roughness: 0.3, envMap: envTex, envMapIntensity: 1.1,
-  });
-  const frontGlassMat = new THREE.MeshPhysicalMaterial({
-    color: '#030304', roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.03, envMap: envTex, envMapIntensity: 0.9,
-  });
-  const screenMat = new THREE.MeshStandardMaterial({
-    color: '#000000', emissive: '#ffffff', emissiveMap: uiTex, emissiveIntensity: 1,
-    roughness: 0.1, metalness: 0, envMap: envTex, envMapIntensity: 0.6, toneMapped: false,
-  });
-  const backMat = new THREE.MeshPhysicalMaterial({
-    color: '#ad7a70', roughness: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.45, envMap: envTex, envMapIntensity: 0.9,
-  });
-  const lensGlassMat = new THREE.MeshPhysicalMaterial({
-    color: '#0a0b16', metalness: 0.4, roughness: 0.06, clearcoat: 1, clearcoatRoughness: 0.02,
-    iridescence: 0.9, iridescenceIOR: 1.5, iridescenceThicknessRange: [260, 420],
-    envMap: envTex, envMapIntensity: 1.4,
-  });
-  const darkMat = new THREE.MeshPhysicalMaterial({
-    color: '#0c0b0d', roughness: 0.2, clearcoat: 1, envMap: envTex, envMapIntensity: 0.8,
-  });
-  const flashMat = new THREE.MeshStandardMaterial({
-    color: '#efe6d2', roughness: 0.35, emissive: '#fff2d9', emissiveIntensity: 0.05, envMap: envTex,
-  });
+  const frameMat = flat({ a: '#d98e7e' });
+  const frontGlassMat = flat({ a: '#111111', facets: false });
+  const screenMat = new THREE.MeshBasicMaterial({ map: uiTex, toneMapped: false });
+  const backMat = flat({ a: '#c9776b' });
+  const lensGlassMat = flat({ a: '#1e1a22', facets: false });
+  const darkMat = flat({ a: '#1a1618', facets: false });
+  const flashMat = flat({ a: '#fff3d6', facets: false });
 
   const phone = new THREE.Group();
   scene.add(phone);
@@ -484,7 +563,7 @@ function start(stage) {
   });
   plateauGeo.translate(0, 0, 0.0004);
   plateauGeo.rotateY(Math.PI);
-  const plateau = new THREE.Mesh(plateauGeo, frameMat);
+  const plateau = new THREE.Mesh(plateauGeo, flat({ a: '#b8665c' }));
   plateau.position.set(0, GH / 2 - 0.0006 - PLH / 2, -T / 2 - 0.00006);
   phone.add(plateau);
   const PLATE_FACE_Z = -T / 2 - 0.00006 - PLD;
@@ -532,9 +611,7 @@ function start(stage) {
 
   // A cartoon right hand holding the phone from behind: palm on the back, thumb over the
   // +x edge, three fingers curled around the -x edge. The screen faces +z in phone space.
-  const skinMat = new THREE.MeshStandardMaterial({
-    color: '#c68a67', roughness: 0.75, flatShading: true, envMap: envTex, envMapIntensity: 0.5,
-  });
+  const skinMat = flat({ a: '#ee9ba8', hard: true });
   const hand = new THREE.Group();
   phone.add(hand);
   const UP = new THREE.Vector3(0, 1, 0);
@@ -570,7 +647,13 @@ function start(stage) {
   const hoseCurve = new THREE.CubicBezierCurve3(
     new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(),
   );
-  const hose = new THREE.Mesh(new THREE.TubeGeometry(hoseCurve, HOSE_SEGMENTS, HOSE_R, HOSE_RADIAL), skinMat);
+  // The arm runs orange-red at the shoulder to the hand's pink at the wrist, along the tube's length.
+  const hoseGeo = new THREE.TubeGeometry(hoseCurve, HOSE_SEGMENTS, HOSE_R, HOSE_RADIAL);
+  const hoseUv = hoseGeo.attributes.uv;
+  const hoseRamp = new Float32Array(hoseUv.count);
+  for (let i = 0; i < hoseUv.count; i++) hoseRamp[i] = hoseUv.getX(i);
+  hoseGeo.setAttribute('aRamp', new THREE.BufferAttribute(hoseRamp, 1));
+  const hose = new THREE.Mesh(hoseGeo, flat({ a: '#e85a2a', b: '#ee9ba8', space: 'attr', from: 0.8, to: 0.985, hard: true }));
   hose.frustumCulled = false;
   scene.add(hose);
 
@@ -578,10 +661,7 @@ function start(stage) {
   const LENS_LOCAL = new THREE.Vector3(LENS_MAIN[0], LENS_MAIN[1], PLATE_FACE_Z - 0.003);
   const FLASH_LOCAL = new THREE.Vector3(-0.0215, 0.0625, PLATE_FACE_Z - 0.01);
 
-  const flashLight = new THREE.SpotLight('#fff4e6', 0, 40, deg(38), 0.5, 1);
-  scene.add(flashLight, flashLight.target);
   const flashOverlay = document.getElementById('heroFlash');
-  const BACK_LOCAL = new THREE.Vector3(0, 0, -1);
   let flashAt = -10;
 
   // -------------------------------------------------------------------------
@@ -1046,10 +1126,11 @@ function start(stage) {
   // -------------------------------------------------------------------------
 
   const dog = (() => {
-    const coat = new THREE.MeshStandardMaterial({ color: '#c98d4f', roughness: 0.85 });
-    const cream = new THREE.MeshStandardMaterial({ color: '#e3b884', roughness: 0.85 });
-    const ears = new THREE.MeshStandardMaterial({ color: '#a86f3c', roughness: 0.85 });
-    const black = new THREE.MeshStandardMaterial({ color: '#141110', roughness: 0.4 });
+    // The coat shifts from orange to orange-red toward the paws, in world height.
+    const coat = flat({ a: '#e89a4c', b: '#e0673a', axis: [0, -1, 0], from: -0.6, to: -0.12, space: 'world' });
+    const cream = flat({ a: '#fbe3c4' });
+    const ears = flat({ a: '#c9602e' });
+    const black = flat({ a: '#2a1a14', facets: false });
     const sphere = (r) => new THREE.SphereGeometry(r, 16, 12);
     const capsule = (r, l) => new THREE.CapsuleGeometry(r, l, 4, 12);
     const add = (parent, geo, mat, [x, y, z], [rx, ry, rz] = [0, 0, 0], [sx, sy, sz] = [1, 1, 1]) => {
@@ -1057,7 +1138,6 @@ function start(stage) {
       m.position.set(x, y, z);
       m.rotation.set(rx, ry, rz);
       m.scale.set(sx, sy, sz);
-      m.castShadow = true;
       parent.add(m);
       return m;
     };
@@ -1083,8 +1163,18 @@ function start(stage) {
     add(head, sphere(0.105), coat, [0, 0, 0], [0, 0, 0], [0.95, 0.92, 1.05]);
     add(head, capsule(0.05, 0.07), cream, [0, -0.035, 0.1], [Math.PI / 2, 0, 0], [1, 1, 0.9]);
     add(head, sphere(0.024), black, [0, -0.02, 0.178]);
-    add(head, sphere(0.014), black, [0.045, 0.03, 0.085]);
-    add(head, sphere(0.014), black, [-0.045, 0.03, 0.085]);
+    const eyes = [
+      add(head, sphere(0.014), black, [0.045, 0.03, 0.085]),
+      add(head, sphere(0.014), black, [-0.045, 0.03, 0.085]),
+    ];
+    // A wide grin, folded away until the dog shows it off.
+    const mouth = new THREE.Group();
+    mouth.position.set(0, -0.062, 0.125);
+    mouth.scale.setScalar(0.001);
+    head.add(mouth);
+    add(mouth, sphere(0.05), black, [0, 0, 0], [0, 0, 0], [1.25, 0.55, 0.5]);
+    add(mouth, capsule(0.012, 0.09), flat({ a: '#f4efe6', facets: false }), [0, 0.016, 0.012], [0, 0, Math.PI / 2]);
+    add(mouth, sphere(0.026), flat({ a: '#e0707a' }), [0, -0.016, 0.012], [0, 0, 0], [1, 0.6, 0.8]);
     const earPivots = [1, -1].map((side) => {
       const ear = new THREE.Group();
       ear.position.set(side * 0.075, 0.05, -0.005);
@@ -1111,11 +1201,11 @@ function start(stage) {
       hip.add(knee);
       add(knee, capsule(0.034, 0.14), front ? cream : coat, [0, -0.1, 0]);
       add(knee, sphere(0.038), cream, [0, -0.205, 0.02], [0, 0, 0], [1, 0.55, 1.35]);
-      return { hip, knee, front };
+      return { hip, knee, front, side: Math.sign(x) };
     });
 
     scene.add(root);
-    return { root, body: bodyPivot, neck, head, ears: earPivots, tail, legs };
+    return { root, body: bodyPivot, neck, head, ears: earPivots, tail, legs, eyes, mouth };
   })();
 
   const GAITS = {
@@ -1145,7 +1235,31 @@ function start(stage) {
   const dogSim = {
     x: -1.2, z: -7.2, yaw: 0.6, speed: 0, state: 'look', timer: 2.5, tx: 0, tz: 0,
     gait: 'trot', phase: 0, wag: 0, amp: 0, time: 0, pose: { ...STAND },
+    stunt: null, stuntAt: -1, nextStunt: 0,
   };
+  // Something odd the dog does while the phone is at your heart, one per press, alternating.
+  const STUNTS = { tornado: 3.2, belly: 3.4, butterfly: 4.6, grin: 3.2 };
+  const STUNT_ORDER = ['tornado', 'butterfly', 'belly', 'grin'];
+
+  const butterfly = (() => {
+    const group = new THREE.Group();
+    const wingMat = flat({ a: '#f2c14e', b: '#e07a3a', axis: [1, 0, 0], from: 0, to: 0.07, facets: false });
+    wingMat.side = THREE.DoubleSide;
+    const wingGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0.02), new THREE.Vector3(0.07, 0, 0.05), new THREE.Vector3(0.06, 0, -0.035),
+      new THREE.Vector3(0, 0, 0.02), new THREE.Vector3(0.06, 0, -0.035), new THREE.Vector3(0, 0, -0.03),
+    ]);
+    const wings = [1, -1].map((side) => {
+      const w = new THREE.Mesh(wingGeo, wingMat);
+      w.scale.x = side;
+      group.add(w);
+      return w;
+    });
+    group.visible = false;
+    group.scale.setScalar(3);
+    scene.add(group);
+    return { group, wings, x: 0, y: 0, z: 0, dir: 0 };
+  })();
   const isMoving = (state) => state === 'run' || state === 'trot' || state === 'walk';
 
   function nextDogState() {
@@ -1175,6 +1289,47 @@ function start(stage) {
     if (reduced && (s.state === 'run' || s.state === 'trot')) s.state = 'walk';
 
     const camAngle = wrapAngle(Math.atan2(VIEW_CAM_POS.x - s.x, VIEW_CAM_POS.z - s.z) - s.yaw);
+    if (s.stuntAt >= 0 && s.time >= s.stuntAt) {
+      s.stuntAt = -1;
+      if (!reduced && !s.stunt) {
+        const kind = STUNT_ORDER[s.nextStunt++ % STUNT_ORDER.length];
+        s.stunt = { kind, t: 0, dur: STUNTS[kind] };
+        s.state = kind === 'grin' ? 'sit' : 'look';
+        s.timer = 99;
+        if (kind === 'butterfly') {
+          const cx = (DOG_AREA.x0 + DOG_AREA.x1) / 2, cz = (DOG_AREA.z0 + DOG_AREA.z1) / 2;
+          butterfly.dir = Math.atan2(cx - s.x, cz - s.z) + rand(-0.6, 0.6);
+          butterfly.x = s.x + Math.sin(butterfly.dir) * 1.2;
+          butterfly.z = s.z + Math.cos(butterfly.dir) * 1.2;
+          butterfly.group.visible = true;
+        }
+      }
+    }
+    if (s.stunt) {
+      const st = s.stunt;
+      st.t += dt;
+      // The tornado spins up to about three turns a second and back down over 2.4 s.
+      if (st.kind === 'tornado' && st.t < 2.4) s.yaw += Math.sin(Math.PI * st.t / 2.4) * TAU * 3 * dt;
+      if (st.kind === 'butterfly') {
+        // It zigzags away just ahead of the dog, then gives up on the ground and climbs out of reach.
+        const b = butterfly;
+        b.dir += Math.sin(st.t * 2.3) * 1.4 * dt;
+        b.x = clamp(b.x + Math.sin(b.dir) * 1.9 * dt, DOG_AREA.x0, DOG_AREA.x1);
+        b.z = clamp(b.z + Math.cos(b.dir) * 1.9 * dt, DOG_AREA.z0, DOG_AREA.z1);
+        b.y = 0.75 + Math.sin(st.t * 5) * 0.18 + Math.max(0, st.t - (st.dur - 1.2)) ** 2 * 3;
+        s.tx = b.x;
+        s.tz = b.z;
+        s.state = 'run';
+      }
+      if (st.kind === 'grin') s.yaw += clamp(camAngle, -2.5 * dt, 2.5 * dt);
+      if (st.t >= st.dur) {
+        if (st.kind === 'butterfly') butterfly.group.visible = false;
+        s.stunt = null;
+        s.state = 'walk';
+        nextDogState();
+      }
+    }
+
     let wantSpeed = 0;
     if (isMoving(s.state)) {
       const dx = s.tx - s.x, dz = s.tz - s.z;
@@ -1183,12 +1338,13 @@ function start(stage) {
       s.yaw += clamp(wrapAngle(Math.atan2(dx, dz) - s.yaw), -turn * dt, turn * dt);
       wantSpeed = GAITS[s.state].speed * clamp(dist / 1.5, 0.3, 1);
       s.gait = s.state;
-      if (dist < 0.4 || s.timer <= 0) nextDogState();
+      if (!s.stunt && (dist < 0.4 || s.timer <= 0)) nextDogState();
     } else {
-      if (s.state === 'look' && Math.abs(camAngle) > 1.0) s.yaw += Math.sign(camAngle) * 0.8 * dt;
+      if (s.state === 'look' && !s.stunt && Math.abs(camAngle) > 1.0) s.yaw += Math.sign(camAngle) * 0.8 * dt;
       if (s.timer <= 0) nextDogState();
     }
 
+    if (s.stunt && s.stunt.kind !== 'butterfly') wantSpeed = 0;
     s.speed = damp(s.speed, wantSpeed, 3, dt);
     s.x = clamp(s.x + Math.sin(s.yaw) * s.speed * dt, DOG_AREA.x0 - 0.5, DOG_AREA.x1 + 0.5);
     s.z = clamp(s.z + Math.cos(s.yaw) * s.speed * dt, DOG_AREA.z0 - 0.5, DOG_AREA.z1 + 0.5);
@@ -1207,11 +1363,13 @@ function start(stage) {
     s.wag += dt * s.pose.wagFreq * TAU;
   }
 
+
   function applyDog() {
     const s = dogSim, P = s.pose, G = GAITS[s.gait];
     const a = s.amp, ph = s.phase, n = a / G.amp;
     dog.root.position.set(s.x, 0, s.z);
     dog.root.rotation.y = s.yaw;
+    setShadow(MAX_SHADOWS - 1, s.x, s.z, 0.46, 3.2);
     dog.body.position.set(0, P.bodyY + G.bob * n * (0.5 + 0.5 * Math.sin(ph * G.harm)), P.bodyZ);
     dog.body.rotation.x = P.pitch + G.pitch * n * Math.sin(ph * G.harm + 0.8);
     dog.legs.forEach((L, i) => {
@@ -1219,6 +1377,7 @@ function start(stage) {
       const swing = a * Math.sin(lp);
       const lift = Math.max(0, -Math.cos(lp)) * a;
       L.hip.rotation.x = (L.front ? P.frontHip : P.hindHip) + swing;
+      L.hip.rotation.z = 0;
       L.knee.rotation.x = L.front ? P.frontKnee + lift * 1.3 : P.hindKnee + lift * 1.1;
     });
     const sniffing = s.state === 'sniff' ? Math.sin(s.time * 9) * 0.05 : 0;
@@ -1226,13 +1385,76 @@ function start(stage) {
     dog.neck.rotation.y = P.headYaw * 0.45;
     dog.head.rotation.x = P.headX;
     dog.head.rotation.y = P.headYaw * 0.55;
+    dog.head.rotation.z = 0;
     for (const ear of dog.ears) {
       ear.rotation.x = P.ear + Math.sin(ph * 2) * 0.35 * n;
       ear.rotation.z = ear.userData.side * (0.25 + 0.15 * n * Math.sin(ph * 2 + 1));
     }
     dog.tail.rotation.x = P.tail;
     dog.tail.rotation.y = Math.sin(s.wag) * P.wagAmp;
+    dog.body.rotation.z = 0;
+    dog.mouth.scale.setScalar(0.001);
+    for (const eye of dog.eyes) eye.scale.y = 1;
+    if (s.stunt) applyStunt(s.stunt, P);
     dog.root.updateMatrixWorld(true);
+  }
+
+  function applyStunt(st, P) {
+    const t = st.t;
+    if (st.kind === 'butterfly') {
+      const b = butterfly;
+      b.group.position.set(b.x, b.y, b.z);
+      b.group.rotation.set(0, b.dir, 0);
+      const flap = Math.sin(t * 34) * 1.1;
+      b.wings[0].rotation.z = flap;
+      b.wings[1].rotation.z = -flap;
+      // Leaps and snaps at the air every so often.
+      const leap = Math.max(0, Math.sin(t * TAU / 1.3)) ** 2;
+      dog.body.position.y += leap * 0.3;
+      dog.neck.rotation.x -= leap * 0.9;
+      dog.head.rotation.x -= leap * 0.4;
+      return;
+    }
+    if (st.kind === 'grin') {
+      const k = smoothstep(0.5, 0.9, t) * (1 - smoothstep(st.dur - 0.4, st.dur, t));
+      dog.mouth.scale.setScalar(Math.max(0.001, k * 1.5));
+      for (const eye of dog.eyes) eye.scale.y = 1 - 0.75 * k;
+      dog.head.rotation.z = Math.sin(t * 1.6) * 0.12 * k;
+      dog.neck.rotation.y = 0;
+      dog.head.rotation.y = 0;
+      return;
+    }
+    if (st.kind === 'tornado') {
+      const spin = t < 2.4 ? Math.sin(Math.PI * t / 2.4) : 0;
+      dog.neck.rotation.y = 0.9 * spin;
+      dog.head.rotation.y = 0.7 * spin;
+      dog.body.rotation.z = -0.28 * spin;
+      dog.legs.forEach((L, i) => { L.hip.rotation.x += Math.sin(t * 22 + i * Math.PI) * 0.45 * spin; });
+      // Dizzy afterwards: swaying and stumbling in place.
+      const w = t - 2.4;
+      if (w > 0) {
+        const fade = Math.max(0, 1 - w / 0.8);
+        dog.body.rotation.z = Math.sin(w * 9) * 0.28 * fade;
+        dog.head.rotation.z = Math.sin(w * 7 + 1) * 0.35 * fade;
+        dog.root.position.x += Math.sin(w * 5) * 0.06 * fade;
+      }
+      return;
+    }
+    // Belly up: flop onto its back, tipped to one side, with the legs splayed out sideways and
+    // paws curled, paddling lazily. Then roll back and shake it off.
+    const k = smoothstep(0, 0.35, t) * (1 - smoothstep(st.dur - 0.7, st.dur - 0.3, t));
+    dog.body.rotation.z = Math.PI * 0.78 * easeInOutCubic(k);
+    dog.body.position.y = lerp(dog.body.position.y, 0.2, k);
+    dog.legs.forEach((L, i) => {
+      const pedal = t * 9 + i * Math.PI / 2;
+      L.hip.rotation.x = lerp(L.hip.rotation.x, (L.front ? 0.55 : -0.45) + Math.sin(pedal) * 0.3, k);
+      L.hip.rotation.z = L.side * 0.75 * k;
+      L.knee.rotation.x = lerp(L.knee.rotation.x, (L.front ? 1.5 : 0.9) + Math.cos(pedal) * 0.25, k);
+    });
+    dog.tail.rotation.y = lerp(dog.tail.rotation.y, Math.sin(t * 16) * 0.6, k);
+    dog.head.rotation.z = Math.sin(t * 2.2) * 0.3 * k;
+    const shake = smoothstep(st.dur - 0.35, st.dur - 0.25, t) * (1 - smoothstep(st.dur - 0.05, st.dur, t));
+    dog.body.rotation.z += Math.sin(t * 60) * 0.14 * shake;
   }
 
   // -------------------------------------------------------------------------
@@ -1382,45 +1604,28 @@ function start(stage) {
   const ldrRT = new THREE.WebGLRenderTarget(CAP, CAP, { depthBuffer: false });
   const capBuf = new Uint8Array(CAP * CAP * 4);
 
-  // Render targets skip the renderer's tone mapping, so the photo gets its own ACES and sRGB pass.
+  // Render targets skip the renderer's output conversion, so the photo gets its own sRGB pass.
   const postScene = new THREE.Scene();
   const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   const postQuad = new THREE.Mesh(
     new THREE.PlaneGeometry(2, 2),
     new THREE.ShaderMaterial({
-      uniforms: { tSrc: { value: hdrRT.texture }, exposure: { value: 1.05 } },
+      uniforms: { tSrc: { value: hdrRT.texture } },
       vertexShader: /* glsl */ `
         varying vec2 vUv;
         void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
       fragmentShader: /* glsl */ `
         uniform sampler2D tSrc;
-        uniform float exposure;
         varying vec2 vUv;
-        vec3 rrtOdt(vec3 v) {
-          vec3 a = v * (v + 0.0245786) - 0.000090537;
-          vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081;
-          return a / b;
-        }
-        vec3 aces(vec3 color) {
-          const mat3 inMat = mat3(
-            vec3(0.59719, 0.07600, 0.02840),
-            vec3(0.35458, 0.90834, 0.13383),
-            vec3(0.04823, 0.01566, 0.83777));
-          const mat3 outMat = mat3(
-            vec3(1.60475, -0.10208, -0.00327),
-            vec3(-0.53108, 1.10813, -0.07276),
-            vec3(-0.07367, -0.00605, 1.07602));
-          color *= exposure / 0.6;
-          color = outMat * rrtOdt(inMat * color);
-          return clamp(color, 0.0, 1.0);
-        }
         vec3 toSRGB(vec3 c) {
           return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
         }
         void main() {
-          vec3 c = aces(texture2D(tSrc, vUv).rgb);
+          vec3 c = clamp(texture2D(tSrc, vUv).rgb, 0.0, 1.0);
+          c = clamp(mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, 1.25), 0.0, 1.0);
+          c = mix(c, c * c * (3.0 - 2.0 * c), 0.5);
           vec2 q = vUv - 0.5;
-          c *= 1.0 - dot(q, q) * 0.55;
+          c *= 1.0 - dot(q, q) * 0.45;
           gl_FragColor = vec4(toSRGB(c), 1.0);
         }`,
       depthTest: false,
@@ -1439,8 +1644,12 @@ function start(stage) {
 
     phone.visible = false;
     hose.visible = false;
+    // A flash only fills a little at this distance, so the photo gets a softer wash than the screen.
+    const screenFlash = flashUniform.value;
+    flashUniform.value = Math.min(screenFlash, 0.12);
     renderer.setRenderTarget(hdrRT);
     renderer.render(scene, captureCam);
+    flashUniform.value = screenFlash;
     renderer.setRenderTarget(ldrRT);
     renderer.render(postScene, postCam);
     renderer.readRenderTargetPixels(ldrRT, 0, 0, CAP, CAP, capBuf);
@@ -1514,6 +1723,7 @@ function start(stage) {
     aim.yaw = clamp(want.yaw + rand(-0.06, 0.06), -0.3, 0.3);
     aim.pitch = clamp(want.pitch + rand(-0.04, 0.04), -0.35, 0.08);
     session = { frames: [], eligible: 0, best: null, nextShot: time + INTERVALS[ui.interval] };
+    if (!dogSim.stunt) dogSim.stuntAt = dogSim.time + 0.6;
     setMode('capture');
     addBeat(time, 0.4, 0.05, 0.6);
     haptic();
@@ -1562,12 +1772,7 @@ function start(stage) {
 
   function updateFlash() {
     const k = Math.exp(-(time - flashAt) / 0.08);
-    flashLight.intensity = k > 0.01 ? 40 * k : 0;
-    if (flashLight.intensity > 0) {
-      flashLight.position.copy(FLASH_LOCAL).applyMatrix4(phone.matrixWorld);
-      flashLight.target.position.copy(BACK_LOCAL).applyQuaternion(phone.quaternion).multiplyScalar(10).add(flashLight.position);
-      flashLight.target.updateMatrixWorld();
-    }
+    flashUniform.value = k > 0.01 ? 0.45 * k : 0;
   }
 
   function startCelebration(kept) {
