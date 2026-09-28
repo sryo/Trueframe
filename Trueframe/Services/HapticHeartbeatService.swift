@@ -18,7 +18,7 @@ protocol HeartbeatEngine: AnyObject {
 
 @MainActor
 final class HapticHeartbeatService: HeartbeatPlaying {
-    private static let logger = Logger(subsystem: "com.trueframe.app", category: "HapticHeartbeatService")
+    private static let logger = Logger(subsystem: "com.sryo.trueframe", category: "HapticHeartbeatService")
     private let makeEngine: @MainActor () -> (any HeartbeatEngine)?
     private var engine: (any HeartbeatEngine)?
     private var sessionGeneration = 0
@@ -57,7 +57,7 @@ final class HapticHeartbeatService: HeartbeatPlaying {
 
 @MainActor
 final class CoreHapticsHeartbeat: HeartbeatEngine {
-    private static let logger = Logger(subsystem: "com.trueframe.app", category: "CoreHapticsHeartbeat")
+    private static let logger = Logger(subsystem: "com.sryo.trueframe", category: "CoreHapticsHeartbeat")
 
     private let engine: CHHapticEngine
     private var player: CHHapticPatternPlayer?

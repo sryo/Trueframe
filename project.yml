@@ -1,6 +1,6 @@
 name: Trueframe
 options:
-  bundleIdPrefix: com.trueframe
+  bundleIdPrefix: com.sryo
   deploymentTarget:
     iOS: "26.0"
   xcodeVersion: "26.0"
@@ -27,7 +27,7 @@ targets:
           - "**/*.plist"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.trueframe.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.sryo.trueframe
         INFOPLIST_FILE: Trueframe/Resources/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
     info:
@@ -55,5 +55,5 @@ targets:
       - target: Trueframe
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.trueframe.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.sryo.trueframe.tests
         GENERATE_INFOPLIST_FILE: YES

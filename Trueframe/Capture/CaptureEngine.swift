@@ -38,12 +38,12 @@ actor CaptureEngine: CaptureEngineProtocol {
     // 24 MP default: the largest supported dimensions at or below this pixel
     // count are requested. 48 MP is deliberately not used (memory, file size).
     private static let maxPixelCount = 25_000_000
-    private static let logger = Logger(subsystem: "com.trueframe.app", category: "CaptureEngine")
+    private static let logger = Logger(subsystem: "com.sryo.trueframe", category: "CaptureEngine")
 
     // AVCaptureSession.startRunning() blocks for hundreds of milliseconds;
     // a dedicated queue as the actor's executor keeps that off the shared
     // cooperative pool (the classic "session queue", with actor isolation).
-    private let executorQueue = DispatchSerialQueue(label: "com.trueframe.capture.engine")
+    private let executorQueue = DispatchSerialQueue(label: "com.sryo.trueframe.capture.engine")
     nonisolated var unownedExecutor: UnownedSerialExecutor {
         executorQueue.asUnownedSerialExecutor()
     }
@@ -288,7 +288,7 @@ actor CaptureEngine: CaptureEngineProtocol {
 // bookkeeping hops to the engine, so by the time stop() sees a capture
 // finished, its photo is already in the stream.
 private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
-    private static let logger = Logger(subsystem: "com.trueframe.app", category: "PhotoCaptureDelegate")
+    private static let logger = Logger(subsystem: "com.sryo.trueframe", category: "PhotoCaptureDelegate")
 
     private let engine: CaptureEngine
     private let events: AsyncStream<CaptureEvent>.Continuation

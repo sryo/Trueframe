@@ -41,7 +41,7 @@ final class MotionMonitor {
     private let manager = CMMotionManager()
     private let updateQueue: OperationQueue = {
         let queue = OperationQueue()
-        queue.name = "com.trueframe.motion"
+        queue.name = "com.sryo.trueframe.motion"
         queue.maxConcurrentOperationCount = 1
         return queue
     }()

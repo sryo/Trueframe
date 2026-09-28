@@ -6,7 +6,7 @@ protocol PhotoSaving: Sendable {
 }
 
 struct LibrarySaver: PhotoSaving {
-    private static let logger = Logger(subsystem: "com.trueframe.app", category: "LibrarySaver")
+    private static let logger = Logger(subsystem: "com.sryo.trueframe", category: "LibrarySaver")
 
     struct Item: Sendable {
         let data: Data
