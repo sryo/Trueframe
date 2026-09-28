@@ -1272,6 +1272,12 @@ function start(stage) {
       neckX: 0.35, headX: 0.25, tail: -2.3, wagAmp: 0.35, wagFreq: 3.5,
     },
     look: { ...STAND, neckX: -0.1, headX: -0.05, tail: -0.6, wagAmp: 0.7, wagFreq: 7, ear: -0.15 },
+    // After a sprint: flops onto its side, one hind leg in the air, head curled back to lick.
+    // The roll and the raised leg are applied in applyDog, keyed off how far the body has dropped.
+    lick: {
+      ...STAND, bodyY: 0.2, frontHip: 0.3, frontKnee: 0.4, hindHip: -0.1, hindKnee: 0.6,
+      neckX: 0.5, headX: 0.6, tail: -1.4, wagAmp: 0.2, wagFreq: 2, ear: 0.2,
+    },
     sniff: {
       ...STAND, bodyY: 0.47, pitch: 0.18, frontHip: -0.18, frontKnee: 0.25, neckX: 1.35, headX: 0.5,
       tail: -0.7, wagAmp: 0.25, wagFreq: 1.8, ear: -0.3,
@@ -1310,6 +1316,11 @@ function start(stage) {
 
   function nextDogState() {
     const s = dogSim;
+    if (s.state === 'run' && Math.random() < 0.1) {
+      s.state = 'lick';
+      s.timer = rand(3, 4.5);
+      return;
+    }
     if (isMoving(s.state) && Math.random() < 0.62) {
       const r = Math.random();
       if (r < 0.38) { s.state = 'sit'; s.timer = rand(2.5, 4.5); }
@@ -1426,7 +1437,8 @@ function start(stage) {
       L.hip.rotation.z = 0;
       L.knee.rotation.x = L.front ? P.frontKnee + lift * 1.3 : P.hindKnee + lift * 1.1;
     });
-    const sniffing = s.state === 'sniff' ? Math.sin(s.time * 9) * 0.05 : 0;
+    const sniffing = s.state === 'sniff' ? Math.sin(s.time * 9) * 0.05
+      : s.state === 'lick' ? Math.max(0, Math.sin(s.time * 11)) * 0.12 : 0;
     dog.neck.rotation.x = P.neckX + sniffing;
     dog.neck.rotation.y = P.headYaw * 0.45;
     dog.head.rotation.x = P.headX;
@@ -1439,6 +1451,20 @@ function start(stage) {
     dog.tail.rotation.x = P.tail;
     dog.tail.rotation.y = Math.sin(s.wag) * P.wagAmp;
     dog.body.rotation.z = 0;
+    // Lying on its right side (a roll toward -x), so the left hind leg is on top and goes up,
+    // and the head turns toward that raised leg.
+    const lying = s.state === 'lick' ? clamp((0.495 - P.bodyY) / (0.495 - 0.2), 0, 1) : 0;
+    if (lying > 0) {
+      dog.body.rotation.z = 1.4 * lying;
+      const top = dog.legs[2];
+      top.hip.rotation.z = 1.35 * lying;
+      top.hip.rotation.x = lerp(top.hip.rotation.x, -0.5, lying);
+      top.knee.rotation.x = lerp(top.knee.rotation.x, 0.3, lying);
+      dog.neck.rotation.y = 1.6 * lying;
+      dog.neck.rotation.x = lerp(dog.neck.rotation.x, 0.1, lying);
+      dog.head.rotation.y = 1.25 * lying;
+      dog.head.rotation.x = lerp(dog.head.rotation.x, 0.5, lying);
+    }
     dog.mouth.scale.setScalar(0.001);
     for (const eye of dog.eyes) eye.scale.y = 1;
     if (s.stunt) applyStunt(s.stunt, P);
