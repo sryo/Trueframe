@@ -19,8 +19,6 @@ enum FanLayout {
     /// Photos rise into the fan from here, slightly shrunk.
     static let entryOffset = CGSize(width: 0, height: 200)
     static let entryScale: CGFloat = 0.8
-    /// Small enough to disappear into the heart.
-    static let landingScale: CGFloat = 0.05
 
     static let stagger: TimeInterval = 0.03
     static let hold: Duration = .seconds(0.7)

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(SessionCoordinator.self) private var coordinator
+    /// Outlives the celebrating phase, so the sparks can keep flying over home.
+    @State private var celebration: Celebration?
 
     var body: some View {
         HomeScreen()
@@ -18,15 +20,19 @@ struct ContentView: View {
                             .transition(.asymmetric(insertion: .identity, removal: .opacity.animation(Motion.dismiss)))
                         }
 
-                        if coordinator.showingTumbleAnimation {
+                        if let celebration {
                             TumbleAnimationView(
-                                photos: coordinator.sessionPreviews,
+                                photos: celebration.photos,
                                 heartFrame: heartFrame,
                                 canvas: proxy.size,
                                 onComplete: {
                                     coordinator.tumbleAnimationComplete()
+                                },
+                                onFinished: {
+                                    if self.celebration?.id == celebration.id { self.celebration = nil }
                                 }
                             )
+                            .id(celebration.id)
                             // The photos bring their own entrance; a fade would hide it
                             .transition(.identity)
                         }
@@ -35,6 +41,9 @@ struct ContentView: View {
                 .ignoresSafeArea()
             }
             .statusBarHidden(coordinator.isCapturing || coordinator.showingTumbleAnimation)
+            .onChange(of: coordinator.showingTumbleAnimation) { _, showing in
+                if showing { celebration = Celebration(photos: coordinator.sessionPreviews) }
+            }
             .onChange(of: coordinator.isCapturing) { _, capturing in
                 if capturing {
                     AccessibilityNotification.Announcement(SessionAnnouncements.capturing).post()
@@ -46,4 +55,9 @@ struct ContentView: View {
                 }
             }
     }
+}
+
+private struct Celebration: Identifiable {
+    let id = UUID()
+    let photos: [UIImage]
 }

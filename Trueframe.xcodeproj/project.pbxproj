@@ -30,6 +30,7 @@
 		3F9B8022DBE086279374A2B7 /* IntervalPickerGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76132711E105573BC940DA87 /* IntervalPickerGeometry.swift */; };
 		3FCB63F98B87439B234F2333 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5B6A3E6CA82BA60696DEE1 /* SessionStore.swift */; };
 		41815CE2BCC2398699043B6A /* CaptureConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1513F86DD2B0EB31C7CE6C8F /* CaptureConfigurationTests.swift */; };
+		4517308384C418078D476E2F /* UIImage+AverageColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E87CE32581D78126FDF30A3F /* UIImage+AverageColor.swift */; };
 		46E16E91C3929CA390F489F3 /* SessionAnnouncements.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC27366208D794321B7F30B5 /* SessionAnnouncements.swift */; };
 		4978FF64C3614910DFF5A83F /* IntervalPickerGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E683723FFEC7A2B2BBB77EA /* IntervalPickerGeometryTests.swift */; };
 		4ECE2413EE2B7314CCC0606B /* UIImage+Brightness.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACAFEAED940FE7703A47FED3 /* UIImage+Brightness.swift */; };
@@ -55,6 +56,7 @@
 		BC38A293B472FC0BD3DEC736 /* CurationPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 736E0C47626F1423B573EC1B /* CurationPolicyTests.swift */; };
 		BC628E019D4B728B34526ABD /* CaptureConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E631B6D2C08F9571E5435EE2 /* CaptureConfiguration.swift */; };
 		BC8114FDE2DE9B40A44214CF /* HapticHeartbeatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02F74899A1AF7DA7E810C60 /* HapticHeartbeatService.swift */; };
+		BCAE8AA2A888F6E4BBF2786E /* BurstFieldTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47C980FA9E05A93C66F3B142 /* BurstFieldTests.swift */; };
 		BD1F29C6C1AC39F422F6CBC2 /* StillnessReadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A3FC5F1A7E749F97006E89 /* StillnessReadingTests.swift */; };
 		C06EFB4148C55BE1B3516172 /* CaptureSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5344BBBE80F986A9F3D63E43 /* CaptureSettings.swift */; };
 		C2DB682D85E418690860CE81 /* SessionAnnouncementsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 030066BC63817C28348AB22D /* SessionAnnouncementsTests.swift */; };
@@ -63,8 +65,11 @@
 		CB78DFC72929020234E68155 /* HeartbeatRestartGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C48A66E9594DDFFE8D43865 /* HeartbeatRestartGateTests.swift */; };
 		D04C96955C4B746ECE670154 /* SessionCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F2AB331548FEEECD2A816A /* SessionCoordinatorTests.swift */; };
 		D819143F1A50CBA4F3956B12 /* FileManager+Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1ABFA2A033B55B654335E9 /* FileManager+Storage.swift */; };
+		D8890F146F977EC3032E486E /* BurstField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E57E8DAA75B00A4C810971D /* BurstField.swift */; };
 		DA1636BF43ECD0B99B0C9638 /* FakePhotoScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BC3D7F8F4C198859C63D8C /* FakePhotoScorer.swift */; };
+		E143CF4B77CAB569D23A17DB /* HeartCollapse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56DC67BFE33F5B2826DD17DC /* HeartCollapse.swift */; };
 		E9F408F15C66945131241349 /* SessionHeart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C2C675E4497C415776E333 /* SessionHeart.swift */; };
+		EA291AAF188900F4FE14F91B /* HeartCollapseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93ACA338DF5B0844C518A709 /* HeartCollapseTests.swift */; };
 		EABA5493841228051E503A22 /* CameraSelectionSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAF5406BC81B3D659BA6B0BD /* CameraSelectionSettings.swift */; };
 		F03F8F9A10A7BAEE4BA9219A /* HeartbeatKeyframes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 537B55235F8ADC2B62C37EF8 /* HeartbeatKeyframes.swift */; };
 		F1939C58019A584556275FE0 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 0FED3EB11210B600C96C8446 /* AppIcon.icon */; };
@@ -105,16 +110,19 @@
 		438F5F76D84F93DE366CF948 /* HapticHeartbeatServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticHeartbeatServiceTests.swift; sourceTree = "<group>"; };
 		44EFA420340011B8BAF055AB /* CaptureDimensionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureDimensionsTests.swift; sourceTree = "<group>"; };
 		45F88A0D2E5D6E0601CA4012 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
+		47C980FA9E05A93C66F3B142 /* BurstFieldTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BurstFieldTests.swift; sourceTree = "<group>"; };
 		495DBAFF257C67559AA64DB6 /* FakeCaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeCaptureEngine.swift; sourceTree = "<group>"; };
 		5344BBBE80F986A9F3D63E43 /* CaptureSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSettings.swift; sourceTree = "<group>"; };
 		537B55235F8ADC2B62C37EF8 /* HeartbeatKeyframes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartbeatKeyframes.swift; sourceTree = "<group>"; };
 		545E09B473D0AF0F565CDAA8 /* FakeHeartbeat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeHeartbeat.swift; sourceTree = "<group>"; };
+		56DC67BFE33F5B2826DD17DC /* HeartCollapse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartCollapse.swift; sourceTree = "<group>"; };
 		58F7D929A5BDAD89D5F73614 /* DemoSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoSession.swift; sourceTree = "<group>"; };
 		5962EA1CF68453FFFD3D58AE /* LensZoomTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensZoomTests.swift; sourceTree = "<group>"; };
 		5A1ABFA2A033B55B654335E9 /* FileManager+Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FileManager+Storage.swift"; sourceTree = "<group>"; };
 		5BA18A9B9E581ED02771E500 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Motion.swift; sourceTree = "<group>"; };
 		5D24D0B6CDE8D7034FB135A6 /* TrueframeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrueframeApp.swift; sourceTree = "<group>"; };
 		5DB6590390B6FA1EB4938EC7 /* Date+Moon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Moon.swift"; sourceTree = "<group>"; };
+		5E57E8DAA75B00A4C810971D /* BurstField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BurstField.swift; sourceTree = "<group>"; };
 		5E683723FFEC7A2B2BBB77EA /* IntervalPickerGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalPickerGeometryTests.swift; sourceTree = "<group>"; };
 		6938C587B7D3350F551DE87F /* CaptureScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureScreen.swift; sourceTree = "<group>"; };
 		6C48A66E9594DDFFE8D43865 /* HeartbeatRestartGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartbeatRestartGateTests.swift; sourceTree = "<group>"; };
@@ -126,6 +134,7 @@
 		79E90E01A0115B9D7F5F3E83 /* ProximityMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityMonitorTests.swift; sourceTree = "<group>"; };
 		86BF79DABD7CCCD14CC1BC57 /* MotionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionMonitor.swift; sourceTree = "<group>"; };
 		8A5043442FD9A062B45F8530 /* FakePhotoSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakePhotoSaver.swift; sourceTree = "<group>"; };
+		93ACA338DF5B0844C518A709 /* HeartCollapseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartCollapseTests.swift; sourceTree = "<group>"; };
 		967DED7DAEE7D665444FD5F4 /* CaptureSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSettingsTests.swift; sourceTree = "<group>"; };
 		9831175F3878A45DA5EF3CF6 /* DemoSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoSessionTests.swift; sourceTree = "<group>"; };
 		A1636ED99F85551B4E38B1BF /* LibrarySaverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySaverTests.swift; sourceTree = "<group>"; };
@@ -144,6 +153,7 @@
 		E631B6D2C08F9571E5435EE2 /* CaptureConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureConfiguration.swift; sourceTree = "<group>"; };
 		E6E1348F14D88D6AC5B1D0F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E7AB8C67A6E41C4E1D84F6B3 /* HeartAnchorKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartAnchorKey.swift; sourceTree = "<group>"; };
+		E87CE32581D78126FDF30A3F /* UIImage+AverageColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIImage+AverageColor.swift"; sourceTree = "<group>"; };
 		EAF5406BC81B3D659BA6B0BD /* CameraSelectionSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSelectionSettings.swift; sourceTree = "<group>"; };
 		EC27366208D794321B7F30B5 /* SessionAnnouncements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionAnnouncements.swift; sourceTree = "<group>"; };
 		ECF2C3DBBB9DDCBCCD2DDBA9 /* HomeRevealTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeRevealTests.swift; sourceTree = "<group>"; };
@@ -173,6 +183,7 @@
 		17814084E7FFEC4B3DC2949A /* Unit */ = {
 			isa = PBXGroup;
 			children = (
+				47C980FA9E05A93C66F3B142 /* BurstFieldTests.swift */,
 				EF6BD3D2C74662E0011CB0F5 /* CameraSelectionSettingsTests.swift */,
 				1513F86DD2B0EB31C7CE6C8F /* CaptureConfigurationTests.swift */,
 				44EFA420340011B8BAF055AB /* CaptureDimensionsTests.swift */,
@@ -186,6 +197,7 @@
 				438F5F76D84F93DE366CF948 /* HapticHeartbeatServiceTests.swift */,
 				DDC12EB417B1FFD0D052E692 /* HeartbeatKeyframesTests.swift */,
 				6C48A66E9594DDFFE8D43865 /* HeartbeatRestartGateTests.swift */,
+				93ACA338DF5B0844C518A709 /* HeartCollapseTests.swift */,
 				ECF2C3DBBB9DDCBCCD2DDBA9 /* HomeRevealTests.swift */,
 				5E683723FFEC7A2B2BBB77EA /* IntervalPickerGeometryTests.swift */,
 				5962EA1CF68453FFFD3D58AE /* LensZoomTests.swift */,
@@ -225,6 +237,7 @@
 			children = (
 				5DB6590390B6FA1EB4938EC7 /* Date+Moon.swift */,
 				5A1ABFA2A033B55B654335E9 /* FileManager+Storage.swift */,
+				E87CE32581D78126FDF30A3F /* UIImage+AverageColor.swift */,
 				ACAFEAED940FE7703A47FED3 /* UIImage+Brightness.swift */,
 			);
 			path = Extensions;
@@ -283,12 +296,14 @@
 		925289692276E485763A492F /* Screens */ = {
 			isa = PBXGroup;
 			children = (
+				5E57E8DAA75B00A4C810971D /* BurstField.swift */,
 				B0BF5C91BD80504906F30C71 /* CameraToggleView.swift */,
 				6938C587B7D3350F551DE87F /* CaptureScreen.swift */,
 				26E11CFC7989CC9FE802F815 /* ContentView.swift */,
 				F298B3984B8930C30D3F4CEF /* FanLayout.swift */,
 				E7AB8C67A6E41C4E1D84F6B3 /* HeartAnchorKey.swift */,
 				537B55235F8ADC2B62C37EF8 /* HeartbeatKeyframes.swift */,
+				56DC67BFE33F5B2826DD17DC /* HeartCollapse.swift */,
 				78A0877834E368FB8A6551DA /* HomeReveal.swift */,
 				45F88A0D2E5D6E0601CA4012 /* HomeScreen.swift */,
 				5BA18A9B9E581ED02771E500 /* Motion.swift */,
@@ -459,6 +474,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BCAE8AA2A888F6E4BBF2786E /* BurstFieldTests.swift in Sources */,
 				C8A5C339ED1BC22C276A1AA4 /* CameraSelectionSettingsTests.swift in Sources */,
 				41815CE2BCC2398699043B6A /* CaptureConfigurationTests.swift in Sources */,
 				6F74648EABD15BDB4BAC09EA /* CaptureDimensionsTests.swift in Sources */,
@@ -476,6 +492,7 @@
 				0DE4EA04828932FD4F1DFB4C /* FileManagerStorageTests.swift in Sources */,
 				A025C30125B75351A5BA5598 /* FlashStyleTests.swift in Sources */,
 				2B71E5D25B6F941CDD419D6F /* HapticHeartbeatServiceTests.swift in Sources */,
+				EA291AAF188900F4FE14F91B /* HeartCollapseTests.swift in Sources */,
 				BC2DDE063A397E341C21E3D0 /* HeartbeatKeyframesTests.swift in Sources */,
 				CB78DFC72929020234E68155 /* HeartbeatRestartGateTests.swift in Sources */,
 				62ECAB43A20113F203A53727 /* HomeRevealTests.swift in Sources */,
@@ -498,6 +515,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D8890F146F977EC3032E486E /* BurstField.swift in Sources */,
 				EABA5493841228051E503A22 /* CameraSelectionSettings.swift in Sources */,
 				017398BD9210842B9E055B7C /* CameraToggleView.swift in Sources */,
 				BC628E019D4B728B34526ABD /* CaptureConfiguration.swift in Sources */,
@@ -513,6 +531,7 @@
 				D819143F1A50CBA4F3956B12 /* FileManager+Storage.swift in Sources */,
 				BC8114FDE2DE9B40A44214CF /* HapticHeartbeatService.swift in Sources */,
 				5D8E8A64091F7C90B56CCB4D /* HeartAnchorKey.swift in Sources */,
+				E143CF4B77CAB569D23A17DB /* HeartCollapse.swift in Sources */,
 				F03F8F9A10A7BAEE4BA9219A /* HeartbeatKeyframes.swift in Sources */,
 				293B137FC6568B415A7143F3 /* HomeReveal.swift in Sources */,
 				25CD047AC6F0CE97891DBE6A /* HomeScreen.swift in Sources */,
@@ -530,6 +549,7 @@
 				3FCB63F98B87439B234F2333 /* SessionStore.swift in Sources */,
 				9A0457F6ACC2463ECDA7C150 /* TrueframeApp.swift in Sources */,
 				74AB22F16FD6DF7775D0FE63 /* TumbleAnimationView.swift in Sources */,
+				4517308384C418078D476E2F /* UIImage+AverageColor.swift in Sources */,
 				4ECE2413EE2B7314CCC0606B /* UIImage+Brightness.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
