@@ -7,6 +7,8 @@
 /// - ending -> idle               (nothing captured)
 /// - celebrating -> saving        (tumble animation complete)
 /// - saving -> idle               (photos curated; the library write finishes on its own)
+/// - celebrating -> capturing     (covered again; the old session saves in the background)
+/// - saving -> capturing          (covered again; the old session saves in the background)
 enum SessionPhase: Equatable, Sendable {
     case idle
     case capturing

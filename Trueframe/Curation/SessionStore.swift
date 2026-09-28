@@ -59,6 +59,18 @@ actor SessionStore {
         entries = []
     }
 
+    /// Hands the current entries' files to whoever still holds those entries,
+    /// so clearing the next session cannot delete them.
+    func detachSession() {
+        entries = []
+    }
+
+    func removeFiles(for ids: [UUID]) {
+        for id in ids {
+            try? FileManager.default.removeItem(at: fileURL(for: id))
+        }
+    }
+
     private func fileURL(for id: UUID) -> URL {
         directory.appendingPathComponent("\(id.uuidString).photo")
     }

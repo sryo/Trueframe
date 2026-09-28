@@ -111,4 +111,39 @@ final class SessionStoreTests: XCTestCase {
 
         XCTAssertTrue(storedFiles().isEmpty)
     }
+
+    func testDetachSession_forgetsEntriesButKeepsTheirFiles() async {
+        let asset = FakeCaptureEngine.makeAsset()
+        await sut.add(asset)
+
+        await sut.detachSession()
+
+        let count = await sut.count
+        XCTAssertEqual(count, 0)
+        let data = await sut.fileData(for: asset.id)
+        XCTAssertEqual(data, asset.fileData)
+    }
+
+    func testClearSession_afterDetach_leavesDetachedFilesAlone() async {
+        let detached = FakeCaptureEngine.makeAsset()
+        await sut.add(detached)
+        await sut.detachSession()
+        await sut.add(FakeCaptureEngine.makeAsset())
+
+        await sut.clearSession()
+
+        XCTAssertEqual(storedFiles(), ["\(detached.id.uuidString).photo"])
+    }
+
+    func testRemoveFiles_deletesOnlyTheNamedFiles() async {
+        let gone = FakeCaptureEngine.makeAsset()
+        let kept = FakeCaptureEngine.makeAsset()
+        await sut.add(gone)
+        await sut.add(kept)
+        await sut.detachSession()
+
+        await sut.removeFiles(for: [gone.id])
+
+        XCTAssertEqual(storedFiles(), ["\(kept.id.uuidString).photo"])
+    }
 }

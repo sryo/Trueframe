@@ -37,6 +37,9 @@ final class SessionCoordinator {
     @ObservationIgnored private(set) var libraryWrite: Task<Void, Never>?
     @ObservationIgnored private var consecutiveDarkFrames = 0
     @ObservationIgnored private var curation: Task<Curation, Never>?
+    /// Bumped by every new session, so work left over from an interrupted one
+    /// can tell it no longer owns the screen or the store.
+    @ObservationIgnored private var session = 0
 
     private struct Curation {
         let entries: [SessionStore.Entry]
@@ -87,16 +90,26 @@ final class SessionCoordinator {
     }
 
     func beginSession() {
-        guard phase == .idle, hasPermissions, FileManager.default.hasAdequateSpace else { return }
+        guard phase == .idle || phase == .celebrating || phase == .saving,
+              hasPermissions, FileManager.default.hasAdequateSpace else { return }
+        let interrupting = phase != .idle
+        if phase == .celebrating {
+            // Nobody will finish the animation now, so its save starts here;
+            // in .saving the save is already running and notices the handover
+            let curation = curation, session = session
+            saveTask = Task { await save(curation, session: session) }
+        }
+        session += 1
         phase = .capturing
         consecutiveDarkFrames = 0
         capturedCount = 0
         keptCount = nil
         sessionPreviews = []
         keptPreviews = nil
+        curation = nil
 
         let configuration = currentConfiguration()
-        eventTask = Task { await runSession(configuration) }
+        eventTask = Task { await runSession(configuration, detachingPrevious: interrupting) }
     }
 
     /// Returns once the engine has drained and the session has settled.
@@ -109,23 +122,37 @@ final class SessionCoordinator {
     func tumbleAnimationComplete() {
         guard phase == .celebrating else { return }
         phase = .saving
-        let curation = curation
-        saveTask = Task {
-            let items = await curatedItems(await curation?.value)
+        let curation = curation, session = session
+        saveTask = Task { await save(curation, session: session) }
+    }
+
+    private func save(_ curation: Task<Curation, Never>?, session: Int) async {
+        let chosen = await curation?.value
+        let items = await curatedItems(chosen)
+        // The photo library may take arbitrarily long to answer; the items
+        // are already in memory, so the next session need not wait for it
+        if !items.isEmpty {
+            libraryWrite = Task { await writeToLibrary(items) }
+        }
+        if session == self.session {
             keptCount = items.count
-            // The photo library may take arbitrarily long to answer; the items
-            // are already in memory, so the next session need not wait for it
-            if !items.isEmpty {
-                libraryWrite = Task { await writeToLibrary(items) }
-            }
-            await resetToIdle()
+            await resetToIdle(session: session)
+        } else if let chosen {
+            // Detached from the store, so these files are this save's to delete.
+            // No kept count: its announcement would talk over "capturing"
+            await store.removeFiles(for: chosen.entries.map(\.id))
         }
     }
 
     // Everything from first beat to teardown runs in this one task, so the
     // drain after stop() is consumed and teardown happens exactly once.
-    private func runSession(_ configuration: CaptureConfiguration) async {
-        await store.clearSession()
+    private func runSession(_ configuration: CaptureConfiguration, detachingPrevious: Bool) async {
+        if detachingPrevious {
+            // The interrupted session's save still reads these files
+            await store.detachSession()
+        } else {
+            await store.clearSession()
+        }
         await haptics.prepareForSession()
         if phase == .capturing {
             // One beat at the moment of contact, before the first photo:
@@ -146,14 +173,16 @@ final class SessionCoordinator {
         }
         haptics.endSession()
 
-        let previews = await store.previews
+        let entries = await store.allEntries()
+        let previews = entries.compactMap(\.preview)
         if previews.isEmpty {
-            await resetToIdle()
+            await resetToIdle(session: session)
         } else {
             sessionPreviews = previews
             phase = .celebrating
             // Scored now, so the animation can show what's dropped
-            curation = Task { await curate() }
+            let session = session
+            curation = Task { await curate(entries, session: session) }
         }
     }
 
@@ -195,12 +224,11 @@ final class SessionCoordinator {
         }
     }
 
-    private func curate() async -> Curation {
-        let entries = await store.allEntries()
+    private func curate(_ entries: [SessionStore.Entry], session: Int) async -> Curation {
         let scores = await scorer.scores(for: entries.map(\.preview))
         let selected = CurationPolicy.selectionIndices(scores: scores)
         let kept = Set(selected)
-        if phase == .celebrating || phase == .saving {
+        if session == self.session {
             keptPreviews = entries.indices.filter { entries[$0].preview != nil }.map(kept.contains)
         }
         return Curation(entries: entries, selected: selected)
@@ -226,8 +254,9 @@ final class SessionCoordinator {
         }
     }
 
-    private func resetToIdle() async {
+    private func resetToIdle(session: Int) async {
         await store.clearSession()
+        guard session == self.session else { return }
         sessionPreviews = []
         keptPreviews = nil
         curation = nil

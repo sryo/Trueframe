@@ -500,6 +500,196 @@ final class SessionCoordinatorTests: XCTestCase {
         await sut.endSession()
     }
 
+    // MARK: - Interrupting The Celebration
+
+    func testBeginSession_whileCelebrating_startsNewSessionAtOnce() async {
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
+        XCTAssertEqual(sut.phase, .celebrating)
+        sut.cameraSelectionSettings.select(.telephoto)
+        let beatsBefore = haptics.beatCount
+
+        sut.beginSession()
+
+        XCTAssertEqual(sut.phase, .capturing)
+        await waitUntil { self.engine.startCallCount == 2 }
+        XCTAssertEqual(engine.lastConfiguration?.lens, .telephoto)
+        XCTAssertEqual(haptics.beatCount, beatsBefore + 1, "One beat at contact")
+        await sut.endSession()
+    }
+
+    func testBeginSession_whileSaving_startsNewSessionAtOnce() async {
+        await scorer.holdScores()
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
+        sut.tumbleAnimationComplete()
+        XCTAssertEqual(sut.phase, .saving)
+
+        sut.beginSession()
+
+        XCTAssertEqual(sut.phase, .capturing)
+        await waitUntil { self.engine.startCallCount == 2 }
+        await scorer.releaseScores()
+        await sut.saveTask?.value
+        XCTAssertEqual(sut.phase, .capturing, "The old save must not send the new session home")
+        await sut.endSession()
+    }
+
+    func testProximityCover_whileCelebrating_startsNewSession() async {
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
+
+        proximity.send(covered: true)
+
+        await waitUntil { self.engine.startCallCount == 2 }
+        XCTAssertEqual(sut.phase, .capturing)
+        await sut.endSession()
+    }
+
+    func testBeginSession_whileEnding_isIgnored() async {
+        haptics.holdsPrepare = true
+        sut.beginSession()
+        await waitUntil { self.haptics.prepareCount == 1 }
+        let ending = Task { await sut.endSession() }
+        await waitUntil { self.sut.phase == .ending }
+
+        sut.beginSession()
+
+        XCTAssertEqual(sut.phase, .ending)
+        haptics.releasePrepare()
+        await ending.value
+        XCTAssertEqual(haptics.prepareCount, 1)
+    }
+
+    func testInterruptedSession_savesItsOwnKeepersOnce() async throws {
+        await scorer.setScores([0.9, 0.1])
+        let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
+        let reject = FakeCaptureEngine.makeAsset(fileData: Data([0x02]))
+        await endSessionWithPhotos([keeper, reject])
+        await waitUntil { self.sut.keptPreviews != nil }
+
+        sut.beginSession()
+        let interruptedSave = try XCTUnwrap(sut.saveTask)
+        await waitUntil { self.engine.startCallCount == 2 }
+        let next = FakeCaptureEngine.makeAsset(fileData: Data([0x03]))
+        engine.emit(.captured(next))
+        await waitForStoredPhotos(1)
+        await interruptedSave.value
+        await sut.libraryWrite?.value
+
+        var batches = await saver.savedBatches
+        XCTAssertEqual(batches.map { $0.map(\.data) }, [[keeper.fileData]])
+
+        await sut.endSession()
+        sut.tumbleAnimationComplete()
+        await sut.saveTask?.value
+        await sut.libraryWrite?.value
+
+        batches = await saver.savedBatches
+        XCTAssertEqual(batches.map { $0.map(\.data) }, [[keeper.fileData], [next.fileData]])
+    }
+
+    func testInterruptedSession_withoutVerdict_finishesScoringInTheBackground() async throws {
+        await scorer.setScores([0.1, 0.9])
+        await scorer.holdScores()
+        let reject = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
+        let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x02]))
+        await endSessionWithPhotos([reject, keeper])
+
+        sut.beginSession()
+        let interruptedSave = try XCTUnwrap(sut.saveTask)
+        await waitUntil { self.engine.startCallCount == 2 }
+        engine.emit(.captured(FakeCaptureEngine.makeAsset(fileData: Data([0x03]))))
+        await waitForStoredPhotos(1)
+        await scorer.releaseScores()
+        await interruptedSave.value
+        await sut.libraryWrite?.value
+
+        let batches = await saver.savedBatches
+        XCTAssertEqual(batches.map { $0.map(\.data) }, [[keeper.fileData]])
+        let storedForNewSession = await sut.store.count
+        XCTAssertEqual(storedForNewSession, 1, "The new session's capture must survive the old save")
+        await sut.endSession()
+    }
+
+    func testInterruptedWhileSaving_savesOnceAndKeepsTheNewSession() async {
+        await scorer.setScores([0.9])
+        await scorer.holdScores()
+        let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
+        await endSessionWithPhotos([keeper])
+        sut.tumbleAnimationComplete()
+        let interruptedSave = sut.saveTask
+
+        sut.beginSession()
+        await waitUntil { self.engine.startCallCount == 2 }
+        engine.emit(.captured(FakeCaptureEngine.makeAsset(fileData: Data([0x03]))))
+        await waitForStoredPhotos(1)
+        await scorer.releaseScores()
+        await interruptedSave?.value
+        await sut.libraryWrite?.value
+
+        let batches = await saver.savedBatches
+        XCTAssertEqual(batches.map { $0.map(\.data) }, [[keeper.fileData]])
+        XCTAssertEqual(sut.phase, .capturing)
+        let storedForNewSession = await sut.store.count
+        XCTAssertEqual(storedForNewSession, 1)
+        await sut.endSession()
+    }
+
+    func testInterruptedSession_removesItsFilesOnceSaved() async throws {
+        let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
+        await endSessionWithPhotos([keeper])
+
+        sut.beginSession()
+        await sut.saveTask?.value
+
+        let leftover = await sut.store.fileData(for: keeper.id)
+        XCTAssertNil(leftover)
+        await sut.endSession()
+    }
+
+    func testInterruptedSession_skipsKeptAnnouncementSoItCannotCollideWithCapturing() async {
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
+
+        sut.beginSession()
+        await sut.saveTask?.value
+
+        XCTAssertNil(sut.keptCount)
+        await sut.endSession()
+    }
+
+    func testInterruption_resetsWhatTheScreensShowForTheNewSession() async {
+        await scorer.holdScores()
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset(), FakeCaptureEngine.makeAsset()])
+        XCTAssertEqual(sut.capturedCount, 2)
+
+        sut.beginSession()
+
+        XCTAssertEqual(sut.capturedCount, 0)
+        XCTAssertTrue(sut.sessionPreviews.isEmpty)
+        XCTAssertNil(sut.keptPreviews)
+        XCTAssertNil(sut.keptCount)
+
+        // The old verdict arriving late must not paint the new session
+        await scorer.releaseScores()
+        await sut.saveTask?.value
+        XCTAssertNil(sut.keptPreviews)
+        await sut.endSession()
+    }
+
+    func testTumbleAnimationComplete_afterInterruption_isIgnored() async {
+        await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
+        sut.beginSession()
+        let interruptedSave = sut.saveTask
+
+        sut.tumbleAnimationComplete()
+
+        XCTAssertEqual(sut.phase, .capturing)
+        XCTAssertTrue(sut.saveTask == interruptedSave, "No second save was started")
+        await interruptedSave?.value
+        await sut.libraryWrite?.value
+        let batches = await saver.savedBatches
+        XCTAssertEqual(batches.count, 1)
+        await sut.endSession()
+    }
+
     // MARK: - Heartbeat
 
     func testHeartbeat_beatsOnContactAndBeforeEachCapture() async {
