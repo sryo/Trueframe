@@ -101,11 +101,17 @@ struct TumbleAnimationView: View {
         let slot = slots[index]
         let fanned = CGPoint(x: center.x + slot.offset.width, y: center.y + slot.offset.height)
         if let since {
-            let progress = HeartCollapse.progress(at: since, index: index, count: shown.count)
             let start = CGPoint(x: fanned.x - heart.x, y: fanned.y - heart.y)
             let fall = kept[index]
-                ? HeartCollapse.infall(from: start, fanRotation: slot.rotation.radians, progress: progress)
-                : HeartCollapse.sling(from: start, fanRotation: slot.rotation.radians, progress: progress)
+                ? HeartCollapse.infall(
+                    from: start, fanRotation: slot.rotation.radians,
+                    progress: HeartCollapse.progress(at: since, index: index, count: shown.count)
+                )
+                : HeartCollapse.sling(
+                    from: start, fanRotation: slot.rotation.radians,
+                    progress: HeartCollapse.slingProgress(at: since, index: index, kept: kept),
+                    lane: HeartCollapse.slingLane(index: index, kept: kept)
+                )
             return PhotoPose(
                 position: CGPoint(x: heart.x + fall.offset.x, y: heart.y + fall.offset.y),
                 rotation: .radians(fall.rotation),
