@@ -21,6 +21,14 @@ final class FanLayoutTests: XCTestCase {
         }
     }
 
+    func testSlots_fewerPhotosOpenANarrowerFan() {
+        let outermost = { (count: Int) in FanLayout.slots(count: count).last!.rotation.degrees }
+        XCTAssertEqual(outermost(2), 25 * (1.0 / 6).squareRoot(), accuracy: 1e-9)
+        XCTAssertEqual(outermost(3), 25 * (2.0 / 6).squareRoot(), accuracy: 1e-9)
+        XCTAssertEqual(outermost(5), 25 * (4.0 / 6).squareRoot(), accuracy: 1e-9)
+        XCTAssertEqual(outermost(7), 25, accuracy: 1e-9)
+    }
+
     func testSlots_sitOnAnArcAroundAPivotBelowCenter() {
         for slot in FanLayout.slots(count: 7) {
             let fromPivot = CGSize(width: slot.offset.width, height: slot.offset.height - FanLayout.pivotDrop)

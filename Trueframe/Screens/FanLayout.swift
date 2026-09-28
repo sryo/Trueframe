@@ -10,7 +10,7 @@ enum FanLayout {
     static let maxPhotos = 7
     static let photoSize: CGFloat = 96
     static let cornerRadius: CGFloat = 10
-    /// Each side of upright.
+    /// Each side of upright, for a full fan.
     static let spread = Angle.degrees(25)
     static let radius: CGFloat = 240
     /// The arc's pivot sits this far below the screen's center, so the fan bows upward.
@@ -66,9 +66,11 @@ enum FanLayout {
 
     static func slots(count: Int) -> [Slot] {
         let count = min(count, maxPhotos)
+        // A small session narrows, but less than proportionally, so a pair still reads as a fan
+        let half = count > 1 ? spread.radians * (Double(count - 1) / Double(maxPhotos - 1)).squareRoot() : 0
         return (0..<count).map { index in
             let fraction = count == 1 ? 0.5 : Double(index) / Double(count - 1)
-            let angle = Angle.radians(spread.radians * (2 * fraction - 1))
+            let angle = Angle.radians(half * (2 * fraction - 1))
             return Slot(
                 offset: CGSize(
                     width: sin(angle.radians) * radius,
