@@ -280,7 +280,7 @@ final class SessionCoordinatorTests: XCTestCase {
         engine.emitCapturedPhoto()
         await waitForStoredPhotos(1)
         await sut.endSession()
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         await sut.saveTask?.value
         XCTAssertEqual(sut.capturedCount, 1)
 
@@ -290,13 +290,13 @@ final class SessionCoordinatorTests: XCTestCase {
         await sut.endSession()
     }
 
-    func testTumbleAnimationComplete_whenNotCelebrating_isIgnored() {
-        sut.tumbleAnimationComplete()
+    func testCelebrationHandedOff_whenNotCelebrating_isIgnored() {
+        sut.celebrationHandedOff()
 
         XCTAssertEqual(sut.phase, .idle)
     }
 
-    func testTumbleAnimationComplete_savesCuratedPhotosAndReturnsToIdle() async throws {
+    func testCelebrationHandedOff_savesCuratedPhotosAndReturnsToIdle() async throws {
         await scorer.setScores([0.9, 0.1])
         let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
         let reject = FakeCaptureEngine.makeAsset(fileData: Data([0x02]))
@@ -309,7 +309,7 @@ final class SessionCoordinatorTests: XCTestCase {
         await sut.endSession()
         XCTAssertEqual(sut.phase, .celebrating)
 
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         XCTAssertEqual(sut.phase, .saving)
 
         let saveTask = try XCTUnwrap(sut.saveTask)
@@ -323,7 +323,7 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(batches.first?.map(\.data), [keeper.fileData])
     }
 
-    func testTumbleAnimationComplete_withHungLibraryWrite_stillReturnsToIdle() async throws {
+    func testCelebrationHandedOff_withHungLibraryWrite_stillReturnsToIdle() async throws {
         await saver.holdSaves()
         sut.beginSession()
         await waitUntil { self.engine.startCallCount == 1 }
@@ -331,7 +331,7 @@ final class SessionCoordinatorTests: XCTestCase {
         await waitForStoredPhotos(1)
         await sut.endSession()
 
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         await waitUntil { self.sut.phase == .idle }
 
         await waitUntil { await self.saver.savedBatches.first?.count == 1 }
@@ -400,7 +400,7 @@ final class SessionCoordinatorTests: XCTestCase {
         // A second pass would now pick the other photo
         await scorer.setScores([0.1, 0.9])
 
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         await sut.saveTask?.value
         await sut.libraryWrite?.value
 
@@ -413,7 +413,7 @@ final class SessionCoordinatorTests: XCTestCase {
         await endSessionWithPhotos([FakeCaptureEngine.makeAsset(), FakeCaptureEngine.makeAsset()])
         await waitUntil { self.sut.verdict != nil }
 
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         await sut.saveTask?.value
 
         let calls = await scorer.callCount
@@ -427,7 +427,7 @@ final class SessionCoordinatorTests: XCTestCase {
         let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x02]))
         await endSessionWithPhotos([reject, keeper])
 
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         XCTAssertEqual(sut.phase, .saving)
         await scorer.releaseScores()
         await sut.saveTask?.value
@@ -444,7 +444,7 @@ final class SessionCoordinatorTests: XCTestCase {
         await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
         await waitUntil { self.sut.verdict != nil }
 
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         await sut.saveTask?.value
 
         XCTAssertNil(sut.verdict)
@@ -461,7 +461,7 @@ final class SessionCoordinatorTests: XCTestCase {
         await sut.endSession()
         XCTAssertNil(sut.keptCount)
 
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         await sut.saveTask?.value
 
         XCTAssertEqual(sut.keptCount, 2)
@@ -475,7 +475,7 @@ final class SessionCoordinatorTests: XCTestCase {
         engine.emitCapturedPhoto()
         await waitForStoredPhotos(1)
         await sut.endSession()
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         await sut.saveTask?.value
         XCTAssertEqual(sut.keptCount, 1)
 
@@ -503,7 +503,7 @@ final class SessionCoordinatorTests: XCTestCase {
     func testBeginSession_whileSaving_startsNewSessionAtOnce() async {
         await scorer.holdScores()
         await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         XCTAssertEqual(sut.phase, .saving)
 
         sut.beginSession()
@@ -561,7 +561,7 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(batches.map { $0.map(\.data) }, [[keeper.fileData]])
 
         await sut.endSession()
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         await sut.saveTask?.value
         await sut.libraryWrite?.value
 
@@ -597,7 +597,7 @@ final class SessionCoordinatorTests: XCTestCase {
         await scorer.holdScores()
         let keeper = FakeCaptureEngine.makeAsset(fileData: Data([0x01]))
         await endSessionWithPhotos([keeper])
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
         let interruptedSave = sut.saveTask
 
         sut.beginSession()
@@ -657,12 +657,12 @@ final class SessionCoordinatorTests: XCTestCase {
         await sut.endSession()
     }
 
-    func testTumbleAnimationComplete_afterInterruption_isIgnored() async {
+    func testCelebrationHandedOff_afterInterruption_isIgnored() async {
         await endSessionWithPhotos([FakeCaptureEngine.makeAsset()])
         sut.beginSession()
         let interruptedSave = sut.saveTask
 
-        sut.tumbleAnimationComplete()
+        sut.celebrationHandedOff()
 
         XCTAssertEqual(sut.phase, .capturing)
         XCTAssertTrue(sut.saveTask == interruptedSave, "No second save was started")

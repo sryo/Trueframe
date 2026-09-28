@@ -41,7 +41,6 @@
 		60E44C2D221371DB5687EAD0 /* CaptureScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6938C587B7D3350F551DE87F /* CaptureScreen.swift */; };
 		62ECAB43A20113F203A53727 /* HomeRevealTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECF2C3DBBB9DDCBCCD2DDBA9 /* HomeRevealTests.swift */; };
 		6F74648EABD15BDB4BAC09EA /* CaptureDimensionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44EFA420340011B8BAF055AB /* CaptureDimensionsTests.swift */; };
-		74AB22F16FD6DF7775D0FE63 /* TumbleAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07D01C68ADC7986D76FDF18F /* TumbleAnimationView.swift */; };
 		7EF838603495BE11962FF6C4 /* FanLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = F298B3984B8930C30D3F4CEF /* FanLayout.swift */; };
 		809E9B8EE97278CB02986330 /* ScrubWheelMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C52D8385EF3DFE4D3D93C583 /* ScrubWheelMathTests.swift */; };
 		93B37D063BF136158AE4F803 /* CurationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16ECD2DB4C2CB4C64C9AD20 /* CurationPolicy.swift */; };
@@ -50,6 +49,7 @@
 		9D24043D34428CA446EF0922 /* SessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A98485809891BEEBBB93F17 /* SessionCoordinator.swift */; };
 		A025C30125B75351A5BA5598 /* FlashStyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F958C41AB1A3296B915DE7 /* FlashStyleTests.swift */; };
 		A5BF99229DC03CA99403EA4B /* CaptureSessionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A6C69B1A8DC64557468C4F8 /* CaptureSessionIntent.swift */; };
+		B68C0F3F556138BEB97CD02D /* CelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C69600A11F5A04B7120785 /* CelebrationView.swift */; };
 		B8DACFA7FA6CE8B166F687F3 /* FanLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C75176A58602B5DAF0EC3A25 /* FanLayoutTests.swift */; };
 		BC2DDE063A397E341C21E3D0 /* HeartbeatKeyframesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC12EB417B1FFD0D052E692 /* HeartbeatKeyframesTests.swift */; };
 		BC38A293B472FC0BD3DEC736 /* CurationPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 736E0C47626F1423B573EC1B /* CurationPolicyTests.swift */; };
@@ -93,7 +93,6 @@
 
 /* Begin PBXFileReference section */
 		030066BC63817C28348AB22D /* SessionAnnouncementsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionAnnouncementsTests.swift; sourceTree = "<group>"; };
-		07D01C68ADC7986D76FDF18F /* TumbleAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TumbleAnimationView.swift; sourceTree = "<group>"; };
 		0A6C69B1A8DC64557468C4F8 /* CaptureSessionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSessionIntent.swift; sourceTree = "<group>"; };
 		0FED3EB11210B600C96C8446 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		10EF511BB834D317873E458E /* DateMoonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateMoonTests.swift; sourceTree = "<group>"; };
@@ -141,6 +140,7 @@
 		B02F74899A1AF7DA7E810C60 /* HapticHeartbeatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticHeartbeatService.swift; sourceTree = "<group>"; };
 		B0AE5212288710F4116899A5 /* ScrubWheelMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrubWheelMath.swift; sourceTree = "<group>"; };
 		B0BF5C91BD80504906F30C71 /* CameraToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraToggleView.swift; sourceTree = "<group>"; };
+		C4C69600A11F5A04B7120785 /* CelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CelebrationView.swift; sourceTree = "<group>"; };
 		C52D8385EF3DFE4D3D93C583 /* ScrubWheelMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrubWheelMathTests.swift; sourceTree = "<group>"; };
 		C5C2C675E4497C415776E333 /* SessionHeart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHeart.swift; sourceTree = "<group>"; };
 		C75176A58602B5DAF0EC3A25 /* FanLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanLayoutTests.swift; sourceTree = "<group>"; };
@@ -298,6 +298,7 @@
 				5E57E8DAA75B00A4C810971D /* BurstField.swift */,
 				B0BF5C91BD80504906F30C71 /* CameraToggleView.swift */,
 				6938C587B7D3350F551DE87F /* CaptureScreen.swift */,
+				C4C69600A11F5A04B7120785 /* CelebrationView.swift */,
 				26E11CFC7989CC9FE802F815 /* ContentView.swift */,
 				F298B3984B8930C30D3F4CEF /* FanLayout.swift */,
 				E7AB8C67A6E41C4E1D84F6B3 /* HeartAnchorKey.swift */,
@@ -310,7 +311,6 @@
 				B0AE5212288710F4116899A5 /* ScrubWheelMath.swift */,
 				EC27366208D794321B7F30B5 /* SessionAnnouncements.swift */,
 				C5C2C675E4497C415776E333 /* SessionHeart.swift */,
-				07D01C68ADC7986D76FDF18F /* TumbleAnimationView.swift */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -523,6 +523,7 @@
 				60E44C2D221371DB5687EAD0 /* CaptureScreen.swift in Sources */,
 				A5BF99229DC03CA99403EA4B /* CaptureSessionIntent.swift in Sources */,
 				C06EFB4148C55BE1B3516172 /* CaptureSettings.swift in Sources */,
+				B68C0F3F556138BEB97CD02D /* CelebrationView.swift in Sources */,
 				F80DF2BCC2FE81805808D7F1 /* ContentView.swift in Sources */,
 				93B37D063BF136158AE4F803 /* CurationPolicy.swift in Sources */,
 				2E909278A687895BAC4FACCA /* Date+Moon.swift in Sources */,
@@ -548,7 +549,6 @@
 				147C1BE8E83C057819AA76F4 /* SessionPhase.swift in Sources */,
 				3FCB63F98B87439B234F2333 /* SessionStore.swift in Sources */,
 				9A0457F6ACC2463ECDA7C150 /* TrueframeApp.swift in Sources */,
-				74AB22F16FD6DF7775D0FE63 /* TumbleAnimationView.swift in Sources */,
 				4517308384C418078D476E2F /* UIImage+AverageColor.swift in Sources */,
 				4ECE2413EE2B7314CCC0606B /* UIImage+Brightness.swift in Sources */,
 			);

@@ -9,7 +9,7 @@ struct HomeScreen: View {
     @State private var landings = 0
 
     private var sessionHoldsHeart: Bool {
-        coordinator.isCapturing || coordinator.showingTumbleAnimation
+        coordinator.isCapturing || coordinator.isCelebrating
     }
 
     private func hideContent() {
@@ -102,11 +102,11 @@ struct HomeScreen: View {
             if isCapturing {
                 heartStaysPut = true
                 hideContent()
-            } else if !coordinator.showingTumbleAnimation {
+            } else if !coordinator.isCelebrating {
                 showContent(delay: 0)
             }
         }
-        .onChange(of: coordinator.showingTumbleAnimation) { _, showing in
+        .onChange(of: coordinator.isCelebrating) { _, showing in
             if showing {
                 hideContent()
             } else if !coordinator.isCapturing {

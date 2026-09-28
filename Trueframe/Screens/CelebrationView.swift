@@ -6,7 +6,7 @@ import SwiftUI
 ///
 /// The fall and burst are clock-driven from one start time, so they play out
 /// the same however often the view updates.
-struct TumbleAnimationView: View {
+struct CelebrationView: View {
     let heartFrame: CGRect?
     let canvas: CGSize
     /// Home can come back; the sparks keep flying over it.
@@ -35,14 +35,14 @@ struct TumbleAnimationView: View {
     @State private var tints: [Color] = []
 
     init(
-        photos: [UIImage],
+        previews: [UIImage],
         verdict: @escaping @MainActor () -> Verdict?,
         heartFrame: CGRect?,
         canvas: CGSize,
         onComplete: @escaping () -> Void,
         onFinished: @escaping () -> Void
     ) {
-        self.previews = photos
+        self.previews = previews
         self.verdict = verdict
         self.heartFrame = heartFrame
         self.canvas = canvas

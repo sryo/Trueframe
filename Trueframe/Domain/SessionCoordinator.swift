@@ -20,7 +20,7 @@ final class SessionCoordinator {
     let cameraSelectionSettings = CameraSelectionSettings()
 
     var isCapturing: Bool { phase == .capturing || phase == .ending }
-    var showingTumbleAnimation: Bool { phase == .celebrating }
+    var isCelebrating: Bool { phase == .celebrating }
 
     let store = SessionStore()
 
@@ -116,7 +116,7 @@ final class SessionCoordinator {
         await eventTask?.value
     }
 
-    func tumbleAnimationComplete() {
+    func celebrationHandedOff() {
         guard phase == .celebrating else { return }
         phase = .saving
         startSave()

@@ -21,15 +21,15 @@ struct ContentView: View {
                         }
 
                         if let celebration {
-                            TumbleAnimationView(
-                                photos: celebration.photos,
+                            CelebrationView(
+                                previews: celebration.previews,
                                 verdict: { coordinator.verdict },
                                 heartFrame: heartFrame,
                                 canvas: proxy.size,
                                 onComplete: {
                                     // A new session may have taken over and be celebrating by now
                                     if self.celebration?.id == celebration.id {
-                                        coordinator.tumbleAnimationComplete()
+                                        coordinator.celebrationHandedOff()
                                     }
                                 },
                                 onFinished: {
@@ -46,9 +46,9 @@ struct ContentView: View {
                 }
                 .ignoresSafeArea()
             }
-            .statusBarHidden(coordinator.isCapturing || coordinator.showingTumbleAnimation)
-            .onChange(of: coordinator.showingTumbleAnimation) { _, showing in
-                if showing { celebration = Celebration(photos: coordinator.sessionPreviews) }
+            .statusBarHidden(coordinator.isCapturing || coordinator.isCelebrating)
+            .onChange(of: coordinator.isCelebrating) { _, showing in
+                if showing { celebration = Celebration(previews: coordinator.sessionPreviews) }
             }
             .onChange(of: coordinator.isCapturing) { _, capturing in
                 if capturing {
@@ -68,5 +68,5 @@ struct ContentView: View {
 
 private struct Celebration: Identifiable {
     let id = UUID()
-    let photos: [UIImage]
+    let previews: [UIImage]
 }
