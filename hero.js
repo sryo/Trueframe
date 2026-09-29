@@ -1363,6 +1363,8 @@ function start(stage) {
   const STAND = {
     bodyY: 0.495, bodyZ: 0, pitch: 0, frontHip: 0, frontKnee: 0, hindHip: -0.2, hindKnee: 0.35,
     neckX: 0, headX: 0, headYaw: 0, tail: -0.8, wagAmp: 0.3, wagFreq: 2.2, ear: 0,
+    // Lying on a side: body roll, extra neck and head turn, and how far the top hind leg is raised.
+    roll: 0, neckTurn: 0, headTurn: 0, raise: 0,
   };
   const POSES = {
     run: { ...STAND, neckX: 0.3, headX: -0.2, tail: -1.35, wagAmp: 0.12, wagFreq: 3, ear: 0.7 },
@@ -1373,11 +1375,11 @@ function start(stage) {
       neckX: 0.35, headX: 0.25, tail: -2.3, wagAmp: 0.35, wagFreq: 3.5,
     },
     look: { ...STAND, neckX: -0.1, headX: -0.05, tail: -0.6, wagAmp: 0.7, wagFreq: 7, ear: -0.15 },
-    // After a sprint: flops onto its side, one hind leg in the air, head curled back to lick.
-    // The roll and the raised leg are applied in applyDog, keyed off how far the body has dropped.
+    // After a sprint: flops onto its right side, the top hind leg in the air, head curled back to lick it.
     lick: {
       ...STAND, bodyY: 0.2, frontHip: 0.3, frontKnee: 0.4, hindHip: -0.1, hindKnee: 0.6,
-      neckX: 0.5, headX: 0.6, tail: -1.4, wagAmp: 0.2, wagFreq: 2, ear: 0.2,
+      neckX: 0.1, headX: 0.5, tail: -1.4, wagAmp: 0.2, wagFreq: 2, ear: 0.2,
+      roll: 1.4, neckTurn: 1.6, headTurn: 1.25, raise: 1,
     },
     sniff: {
       ...STAND, bodyY: 0.47, pitch: 0.18, frontHip: -0.18, frontKnee: 0.25, neckX: 1.35, headX: 0.5,
@@ -1541,9 +1543,9 @@ function start(stage) {
     const sniffing = s.state === 'sniff' ? Math.sin(s.time * 9) * 0.05
       : s.state === 'lick' ? Math.max(0, Math.sin(s.time * 11)) * 0.12 : 0;
     dog.neck.rotation.x = P.neckX + sniffing;
-    dog.neck.rotation.y = P.headYaw * 0.45;
+    dog.neck.rotation.y = P.headYaw * 0.45 + P.neckTurn;
     dog.head.rotation.x = P.headX;
-    dog.head.rotation.y = P.headYaw * 0.55;
+    dog.head.rotation.y = P.headYaw * 0.55 + P.headTurn;
     dog.head.rotation.z = 0;
     for (const ear of dog.ears) {
       ear.rotation.x = P.ear + Math.sin(ph * 2) * 0.35 * n;
@@ -1551,20 +1553,13 @@ function start(stage) {
     }
     dog.tail.rotation.x = P.tail;
     dog.tail.rotation.y = Math.sin(s.wag) * P.wagAmp;
-    dog.body.rotation.z = 0;
-    // Lying on its right side (a roll toward -x), so the left hind leg is on top and goes up,
-    // and the head turns toward that raised leg.
-    const lying = s.state === 'lick' ? clamp((0.495 - P.bodyY) / (0.495 - 0.2), 0, 1) : 0;
-    if (lying > 0) {
-      dog.body.rotation.z = 1.4 * lying;
+    // Rolled toward -x, the left hind leg is the one on top.
+    dog.body.rotation.z = P.roll;
+    if (P.raise > 0.001) {
       const top = dog.legs[2];
-      top.hip.rotation.z = 1.35 * lying;
-      top.hip.rotation.x = lerp(top.hip.rotation.x, -0.5, lying);
-      top.knee.rotation.x = lerp(top.knee.rotation.x, 0.3, lying);
-      dog.neck.rotation.y = 1.6 * lying;
-      dog.neck.rotation.x = lerp(dog.neck.rotation.x, 0.1, lying);
-      dog.head.rotation.y = 1.25 * lying;
-      dog.head.rotation.x = lerp(dog.head.rotation.x, 0.5, lying);
+      top.hip.rotation.z = 1.35 * P.raise;
+      top.hip.rotation.x = lerp(top.hip.rotation.x, -0.5, P.raise);
+      top.knee.rotation.x = lerp(top.knee.rotation.x, 0.3, P.raise);
     }
     dog.mouth.scale.setScalar(0.001);
     for (const eye of dog.eyes) eye.scale.y = 1;
