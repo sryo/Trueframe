@@ -38,22 +38,6 @@ const damp = (a, b, rate, dt) => lerp(a, b, 1 - Math.exp(-rate * dt));
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const font = (weight, size) => `${weight} ${size}px ${FONT}`;
 
-function hash2(x, y) {
-  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
-  return s - Math.floor(s);
-}
-
-function valueNoise(x, y) {
-  const xi = Math.floor(x), yi = Math.floor(y);
-  const xf = x - xi, yf = y - yi;
-  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-  return lerp(
-    lerp(hash2(xi, yi), hash2(xi + 1, yi), u),
-    lerp(hash2(xi, yi + 1), hash2(xi + 1, yi + 1), u),
-    v,
-  );
-}
-
 // Exact critically damped spring step; s = { x, v }.
 function springStep(s, target, omega, dt) {
   const x = s.x - target;
@@ -101,6 +85,9 @@ function flatRoundedRect(w, h, r) {
   uv.needsUpdate = true;
   return geo;
 }
+
+// Offsets that repeat a mark across the edges of a tiling canvas so it wraps seamlessly.
+const TILE_OFFSETS = (s) => [[0, 0], [s, 0], [-s, 0], [0, s], [0, -s]];
 
 function canvasTexture(size, paint) {
   const c = document.createElement('canvas');
@@ -164,8 +151,8 @@ function start(stage) {
   scene.fog = new THREE.Fog(horizonColor.clone(), 24, 170);
 
   // Everything is unlit and drawn in flat fills. A colour can drift from `a` to `b`
-  // across the shape (along an axis in object or world space, or along a per-vertex
-  // `aRamp` attribute) to shift hue, never to model volume. With facets on, each face
+  // across the shape (along an axis in object or world space) to shift hue, never to
+  // model volume. With facets on, each face
   // is shaded softly between a warm lit tone and a cool dusk shadow by how much it faces
   // the low sun behind the scene; `hard` snaps that to exactly two tones per face for
   // the illustrated hand and arm. Every flat colour
@@ -185,22 +172,18 @@ function start(stage) {
   const FLASH_TINT = new THREE.Color('#fff4e0');
   const flashUniform = { value: 0 };
   function flat({
-    a, b = a, axis = [0, 1, 0], from = 0, to = 1, space = 'local', facets = true, hard = false, vertexColors = false, map = null,
-    c = null, cFrom = 0, cTo = 1,
+    a, b = a, axis = [0, 1, 0], from = 0, to = 1, space = 'local', facets = true, hard = false, map = null,
   }) {
-    const m = new THREE.MeshBasicMaterial({ vertexColors, map });
-    const mode = space === 'attr' ? 3 : a === b ? 0 : space === 'world' ? 2 : 1;
+    const m = new THREE.MeshBasicMaterial({ map });
+    const mode = a === b ? 0 : space === 'world' ? 2 : 1;
     m.defines = { FLAT_MODE: mode };
     if (facets) m.defines.FLAT_FACETS = '';
     if (hard) m.defines.FLAT_HARD = '';
-    if (c) m.defines.FLAT_THIRD = '';
     const uniforms = {
       uFlatA: { value: new THREE.Color(a) },
       uFlatB: { value: new THREE.Color(b) },
       uFlatAxis: { value: new THREE.Vector3(...axis).normalize() },
       uFlatRange: { value: new THREE.Vector2(from, to) },
-      uFlatC: { value: new THREE.Color(c || a) },
-      uFlatRangeC: { value: new THREE.Vector2(cFrom, cTo) },
       uFlatLight: { value: FLAT_LIGHT },
       uSunDir: { value: sunDir },
       uFlash: flashUniform,
@@ -213,13 +196,8 @@ function start(stage) {
           varying vec3 vFlatWorld;
           varying vec3 vFlatNormal;
           varying float vFlatT;
-          varying float vFlatTC;
           uniform vec3 uFlatAxis;
-          uniform vec2 uFlatRange;
-          uniform vec2 uFlatRangeC;
-          #if FLAT_MODE == 3
-            attribute float aRamp;
-          #endif`)
+          uniform vec2 uFlatRange;`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           vec4 flatWp = vec4(transformed, 1.0);
           #ifdef USE_INSTANCING
@@ -236,35 +214,22 @@ function start(stage) {
             vFlatT = (dot(transformed, uFlatAxis) - uFlatRange.x) / (uFlatRange.y - uFlatRange.x);
           #elif FLAT_MODE == 2
             vFlatT = (dot(flatWp.xyz, uFlatAxis) - uFlatRange.x) / (uFlatRange.y - uFlatRange.x);
-          #elif FLAT_MODE == 3
-            vFlatT = (aRamp - uFlatRange.x) / (uFlatRange.y - uFlatRange.x);
           #else
             vFlatT = 0.0;
-          #endif
-          #if FLAT_MODE == 2
-            vFlatTC = (dot(flatWp.xyz, uFlatAxis) - uFlatRangeC.x) / (uFlatRangeC.y - uFlatRangeC.x);
-          #else
-            vFlatTC = 0.0;
           #endif`);
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>
           varying vec3 vFlatWorld;
           varying vec3 vFlatNormal;
           varying float vFlatT;
-          varying float vFlatTC;
           uniform vec3 uFlatA;
           uniform vec3 uFlatB;
-          uniform vec3 uFlatC;
           uniform vec3 uFlatLight;
           uniform float uFlash;
           uniform vec3 uFlashTint;
           uniform vec3 uSunDir;
           ${STIPPLE_GLSL}`)
         .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `vec4 diffuseColor = vec4(mix(uFlatA, uFlatB, stipple(clamp(vFlatT, 0.0, 1.0))), opacity);
-          #ifdef FLAT_THIRD
-            // A third world-space stop further along the axis.
-            diffuseColor.rgb = mix(diffuseColor.rgb, uFlatC, stipple(clamp(vFlatTC, 0.0, 1.0)));
-          #endif
           #ifdef FLAT_FACETS
             #ifdef FLAT_HARD
               vec3 flatN = normalize(cross(dFdx(vFlatWorld), dFdy(vFlatWorld)));
@@ -400,20 +365,30 @@ function start(stage) {
   // Ground: three flat fields, indigo near, violet mid, magenta far, meeting at ragged
   // wavy lines rather than a smooth ramp, dotted with flat patches and painted with
   // little tuft marks in the next tone up, like strokes of a brush on a poster.
-  const EDGE_NEAR = (x) => -7.2 + 0.28 * Math.sin(x * 1.3 + 0.4) + 0.16 * Math.sin(x * 3.1 + 2.0);
-  const EDGE_FAR = (x) => -19 + 0.9 * Math.sin(x * 0.45 + 1.0) + 0.4 * Math.sin(x * 1.7);
-  const EDGE_GLSL = `
-    float edgeNear(float x) { return -7.2 + 0.28 * sin(x * 1.3 + 0.4) + 0.16 * sin(x * 3.1 + 2.0); }
-    float edgeFar(float x) { return -19.0 + 0.9 * sin(x * 0.45 + 1.0) + 0.4 * sin(x * 1.7); }`;
+  // The grass rows share these tones, so each clump reads as a piece of the field it stands in.
+  const GROUND = { near: '#2c1472', mid: '#5424a0', far: '#c23cc0', patch: '#c4b4e4' };
+  // Each field line is a base depth plus sine waves [amplitude, frequency, phase]; the same
+  // table places the hedges in JS and draws the seam in the ground shader.
+  const EDGES = {
+    edgeNear: [-7.2, [0.28, 1.3, 0.4], [0.16, 3.1, 2.0]],
+    edgeFar: [-19, [0.9, 0.45, 1.0], [0.4, 1.7, 0]],
+  };
+  const edgeFn = ([base, ...waves]) => (x) => waves.reduce((z, [a, f, ph]) => z + a * Math.sin(x * f + ph), base);
+  const EDGE_NEAR = edgeFn(EDGES.edgeNear);
+  const EDGE_FAR = edgeFn(EDGES.edgeFar);
+  const EDGE_GLSL = Object.entries(EDGES).map(([name, [base, ...waves]]) =>
+    `float ${name}(float x) { return ${base.toFixed(2)}${waves.map(([a, f, ph]) => ` + ${a.toFixed(2)} * sin(x * ${f.toFixed(2)} + ${ph.toFixed(2)})`).join('')}; }`,
+  ).join('\n');
+  const MAX_ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const groundGeo = new THREE.PlaneGeometry(600, 600, 1, 1);
   groundGeo.rotateX(-Math.PI / 2);
   const groundTex = canvasTexture(256, (c, s) => {
     c.fillStyle = '#ffffff';
     c.fillRect(0, 0, s, s);
-    c.fillStyle = '#c4b4e4';
+    c.fillStyle = GROUND.patch;
     for (let i = 0; i < 14; i++) {
       const x = rand(0, s), y = rand(0, s), rx = rand(10, 30), ry = rx * rand(0.5, 0.9), r = rand(0, TAU);
-      for (const [ox, oy] of [[0, 0], [s, 0], [-s, 0], [0, s], [0, -s]]) {
+      for (const [ox, oy] of TILE_OFFSETS(s)) {
         c.beginPath();
         c.ellipse(x + ox, y + oy, rx, ry, r, 0, TAU);
         c.fill();
@@ -422,7 +397,7 @@ function start(stage) {
   });
   groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
   groundTex.repeat.set(40, 40);
-  groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  groundTex.anisotropy = MAX_ANISO;
   // Tuft marks: three tapered strokes fanning out of one root, white on black. Canvas up
   // maps to away from the viewer, so the strokes stand upright on screen.
   const HATCH_TILE = 2.6;
@@ -432,7 +407,7 @@ function start(stage) {
     c.fillStyle = '#fff';
     const stroke = (x0, y0, x1, y1, w) => {
       const dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy), nx = (-dy / l) * w, ny = (dx / l) * w;
-      for (const [ox, oy] of [[0, 0], [s, 0], [-s, 0], [0, s], [0, -s]]) {
+      for (const [ox, oy] of TILE_OFFSETS(s)) {
         c.beginPath();
         c.moveTo(x0 + nx + ox, y0 + ny + oy);
         c.lineTo(x1 + ox, y1 + oy);
@@ -450,19 +425,24 @@ function start(stage) {
   });
   hatchTex.colorSpace = THREE.NoColorSpace;
   hatchTex.wrapS = hatchTex.wrapT = THREE.RepeatWrapping;
-  hatchTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const groundMat = flat({ a: '#2c1472', b: '#5424a0', c: '#c23cc0', axis: [0, 0, -1], from: 3, to: 13, cFrom: 15, cTo: 29, space: 'world', facets: false, map: groundTex });
+  hatchTex.anisotropy = MAX_ANISO;
+  // The near/mid and mid/far seams are drawn by the ground shader below, not by flat()'s ramp.
+  const groundMat = flat({ a: GROUND.near, b: GROUND.mid, space: 'world', facets: false, map: groundTex });
   const groundCompile = groundMat.onBeforeCompile;
   groundMat.onBeforeCompile = (shader, r) => {
     groundCompile(shader, r);
     shader.uniforms.uShadows = shadowUniform;
     shader.uniforms.uShadowDir = { value: new THREE.Vector2(SHADOW_DIR.x, SHADOW_DIR.z) };
-    shader.uniforms.uPatch = { value: new THREE.Color('#c4b4e4') };
+    shader.uniforms.uShadowSide = { value: new THREE.Vector2(SHADOW_DIR.z, -SHADOW_DIR.x) };
+    shader.uniforms.uPatch = { value: new THREE.Color(GROUND.patch) };
+    shader.uniforms.uGroundFar = { value: new THREE.Color(GROUND.far) };
     shader.uniforms.uHatch = { value: hatchTex };
     shader.fragmentShader = shader.fragmentShader
       .replace('void main() {', `uniform vec4 uShadows[${MAX_SHADOWS}];
         uniform vec2 uShadowDir;
+        uniform vec2 uShadowSide;
         uniform vec3 uPatch;
+        uniform vec3 uGroundFar;
         uniform sampler2D uHatch;
         ${EDGE_GLSL}
         float groundHatch(vec2 offset) {
@@ -486,18 +466,20 @@ function start(stage) {
           return max(field, midMarks);
         }
         void main() {`)
-      .replace('stipple(clamp(vFlatT, 0.0, 1.0))', 'groundNearMid()')
-      .replace('stipple(clamp(vFlatTC, 0.0, 1.0))', 'groundMidFar()')
+      .replace('stipple(clamp(vFlatT, 0.0, 1.0))), opacity);', `groundNearMid()), opacity);
+        diffuseColor.rgb = mix(diffuseColor.rgb, uGroundFar, groundMidFar());`)
       .replace('#include <map_fragment>', `vec3 groundBase = diffuseColor.rgb;
         #include <map_fragment>
-        vec2 shadowSide = vec2(uShadowDir.y, -uShadowDir.x);
         bool shaded = false;
         for (int i = 0; i < ${MAX_SHADOWS}; i++) {
           vec4 e = uShadows[i];
           if (e.z <= 0.0) continue;
           vec2 d = vFlatWorld.xz - e.xy;
-          vec2 q = vec2(dot(d, shadowSide) / e.z, dot(d, uShadowDir) / e.w);
-          if (dot(q, q) < 1.0) shaded = true;
+          vec2 q = vec2(dot(d, uShadowSide) / e.z, dot(d, uShadowDir) / e.w);
+          if (dot(q, q) < 1.0) {
+            shaded = true;
+            break;
+          }
         }
         if (shaded) diffuseColor.rgb = groundBase * uPatch;`);
   };
@@ -511,7 +493,7 @@ function start(stage) {
   const grassTime = { value: 0 };
   {
     function clumpGeo(spikes) {
-      const pos = [0, 0, 0], tip = [0], idx = [];
+      const pos = [0, 0, 0], idx = [];
       const pts = [[-0.5, 0]];
       for (let i = 0; i < spikes; i++) {
         const x0 = -0.5 + i / spikes, x1 = -0.5 + (i + 1) / spikes;
@@ -521,12 +503,8 @@ function start(stage) {
         if (i < spikes - 1) pts.push([x1, rand(0.42, 0.6) * edgeFade]);
       }
       pts.push([0.5, 0]);
-      for (const [x, y] of pts) {
-        pos.push(x, y, 0);
-        tip.push(y);
-      }
-      for (let i = 1; i < pts.length; i++) idx.push(0, i, i + 1 > pts.length ? i : i + 1);
-      idx.length -= 3;
+      for (const [x, y] of pts) pos.push(x, y, 0);
+      for (let i = 1; i < pts.length - 1; i++) idx.push(0, i, i + 1);
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       geo.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, i) => (i % 3 === 2 ? 1 : 0)), 3));
@@ -593,7 +571,7 @@ function start(stage) {
       const h = rand(0.34, 0.6);
       fore.push([x, z, h * rand(1.5, 2.3), h]);
     }
-    addRow(clumpMat('#2c1472', '#5424a0'), fore);
+    addRow(clumpMat(GROUND.near, GROUND.mid), fore);
 
     // The near field's ragged top edge: a dense indigo hedge on the field line, kept low
     // where the dog plays behind it.
@@ -604,7 +582,7 @@ function start(stage) {
       const h = low ? rand(0.1, 0.17) : rand(0.2, 0.4);
       hedgeNear.push([x, z, h * rand(1.6, 2.6), h]);
     }
-    addRow(clumpMat('#2c1472', '#2c1472'), hedgeNear);
+    addRow(clumpMat(GROUND.near, GROUND.near), hedgeNear);
 
     // Mid field clumps: violet with magenta crowns, sparse, clear of the dog's play area.
     const mid = [];
@@ -614,7 +592,7 @@ function start(stage) {
       const h = rand(0.18, 0.34);
       mid.push([x, z, h * rand(1.4, 2.2), h]);
     }
-    addRow(clumpMat('#5424a0', '#c23cc0'), mid);
+    addRow(clumpMat(GROUND.mid, GROUND.far), mid);
 
     // The mid field's ragged top edge against the magenta far field.
     const hedgeFar = [];
@@ -623,7 +601,7 @@ function start(stage) {
       const h = rand(0.28, 0.55);
       hedgeFar.push([x, z, h * rand(1.6, 2.6), h]);
     }
-    addRow(clumpMat('#5424a0', '#5424a0'), hedgeFar);
+    addRow(clumpMat(GROUND.mid, GROUND.mid), hedgeFar);
 
     // A few magenta clumps scattered across the far field.
     const far = [];
@@ -633,7 +611,7 @@ function start(stage) {
       const h = rand(0.35, 0.7);
       far.push([x, z, h * rand(1.5, 2.4), h]);
     }
-    addRow(clumpMat('#c23cc0', '#c23cc0'), far);
+    addRow(clumpMat(GROUND.far, GROUND.far), far);
   }
 
   // Trees and hills in the middle and far distance.
@@ -691,7 +669,7 @@ function start(stage) {
   const g = uiCanvas.getContext('2d');
   const uiTex = new THREE.CanvasTexture(uiCanvas);
   uiTex.colorSpace = THREE.SRGBColorSpace;
-  uiTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  uiTex.anisotropy = MAX_ANISO;
 
   const frameMat = flat({ a: '#d98e7e' });
   const frontGlassMat = flat({ a: '#111111', facets: false });
@@ -820,19 +798,15 @@ function start(stage) {
   const hoseCurve = new THREE.CubicBezierCurve3(
     new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(),
   );
-  // The arm runs orange-red at the shoulder to the hand's pink at the wrist, along the tube's length.
+  // Built once for its index and uv layout; updateHose rewrites the rings in place every frame.
   const hoseGeo = new THREE.TubeGeometry(hoseCurve, HOSE_SEGMENTS, HOSE_R, HOSE_RADIAL);
-  const hoseUv = hoseGeo.attributes.uv;
-  const hoseRamp = new Float32Array(hoseUv.count);
-  for (let i = 0; i < hoseUv.count; i++) hoseRamp[i] = hoseUv.getX(i);
-  hoseGeo.setAttribute('aRamp', new THREE.BufferAttribute(hoseRamp, 1));
-  const hose = new THREE.Mesh(hoseGeo, flat({ a: '#7a48f0', b: '#ff8fbe', space: 'world', hard: true }));
+  const hoseMat = flat({ a: '#7a48f0', b: '#ff8fbe', space: 'world', hard: true });
+  const hose = new THREE.Mesh(hoseGeo, hoseMat);
   hose.frustumCulled = false;
   scene.add(hose);
 
   const phoneHit = [body, frontGlass, screenMesh, backGlass, plateau, ...hand.children];
   const LENS_LOCAL = new THREE.Vector3(LENS_MAIN[0], LENS_MAIN[1], PLATE_FACE_Z - 0.003);
-  const FLASH_LOCAL = new THREE.Vector3(-0.0215, 0.0625, PLATE_FACE_Z - 0.01);
 
   const flashOverlay = document.getElementById('heroFlash');
   let flashAt = -10;
@@ -1664,7 +1638,7 @@ function start(stage) {
   const baseQuatInv = new THREE.Quaternion();
   const pose = {
     idle: { p: new THREE.Vector3(), r: new THREE.Vector3() },
-    pressed: { p: new THREE.Vector3(), r: new THREE.Vector3() },
+    pressed: { p: new THREE.Vector3() },
   };
   const springs = Array.from({ length: 6 }, () => ({ x: 0, v: 0 }));
   const pressW = { x: 0, v: 0 };
@@ -1731,23 +1705,84 @@ function start(stage) {
     p3.copy(WRIST_LOCAL).applyMatrix4(phone.matrixWorld);
     hoseTmp.copy(FOREARM_LOCAL).applyQuaternion(phone.quaternion);
     p2.copy(p3).addScaledVector(hoseTmp, 0.16);
-    // Curves cache their arc-length table; it has to be rebuilt after moving the points.
-    hoseCurve.needsUpdate = true;
-    const next = new THREE.TubeGeometry(hoseCurve, HOSE_SEGMENTS, HOSE_R, HOSE_RADIAL);
-    hose.geometry.attributes.position.array.set(next.attributes.position.array);
-    hose.geometry.attributes.normal.array.set(next.attributes.normal.array);
-    hose.geometry.attributes.position.needsUpdate = true;
-    hose.geometry.attributes.normal.needsUpdate = true;
-    next.dispose();
+    rebuildTube();
 
     // The arm's colour runs along a tilted screen direction, so its bands cross the arm at an
     // angle. The ramp spans the visible stretch of forearm, red below and pink toward the hand.
-    const ramp = hose.material.userData.flat;
+    const ramp = hoseMat.userData.flat;
     ramp.uFlatAxis.value.copy(HOSE_RAMP_AXIS).applyQuaternion(camera.quaternion);
     ramp.uFlatRange.value.set(
-      hoseCurve.getPoint(0.8).dot(ramp.uFlatAxis.value),
-      hoseCurve.getPoint(0.985).dot(ramp.uFlatAxis.value),
+      hoseCurve.getPoint(0.8, hoseTmp).dot(ramp.uFlatAxis.value),
+      hoseCurve.getPoint(0.985, hoseTmp).dot(ramp.uFlatAxis.value),
     );
+  }
+
+  // Rewrites the tube's rings in place, the same way TubeGeometry lays them out: rings evenly
+  // spaced by arc length, oriented by parallel-transported frames, so nothing is allocated.
+  const HOSE_SAMPLES = 64;
+  const hoseLengths = new Float32Array(HOSE_SAMPLES + 1);
+  const hoseP = new THREE.Vector3(), hosePrevP = new THREE.Vector3();
+  const hoseT = new THREE.Vector3(), hosePrevT = new THREE.Vector3();
+  const hoseN = new THREE.Vector3(), hoseB = new THREE.Vector3(), hoseAxis = new THREE.Vector3();
+  const hoseD = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  function hoseTangent(t, out) {
+    const { v0, v1, v2, v3 } = hoseCurve, u = 1 - t;
+    hoseD[0].subVectors(v1, v0).multiplyScalar(3 * u * u);
+    hoseD[1].subVectors(v2, v1).multiplyScalar(6 * u * t);
+    hoseD[2].subVectors(v3, v2).multiplyScalar(3 * t * t);
+    return out.copy(hoseD[0]).add(hoseD[1]).add(hoseD[2]).normalize();
+  }
+  function hoseParamAt(u) {
+    const target = u * hoseLengths[HOSE_SAMPLES];
+    let i = 0;
+    while (i < HOSE_SAMPLES - 1 && hoseLengths[i + 1] < target) i++;
+    const span = hoseLengths[i + 1] - hoseLengths[i];
+    return (i + (span > 0 ? (target - hoseLengths[i]) / span : 0)) / HOSE_SAMPLES;
+  }
+  function rebuildTube() {
+    hoseCurve.getPoint(0, hosePrevP);
+    hoseLengths[0] = 0;
+    for (let i = 1; i <= HOSE_SAMPLES; i++) {
+      hoseCurve.getPoint(i / HOSE_SAMPLES, hoseP);
+      hoseLengths[i] = hoseLengths[i - 1] + hoseP.distanceTo(hosePrevP);
+      hosePrevP.copy(hoseP);
+    }
+    const pos = hoseGeo.attributes.position.array, nor = hoseGeo.attributes.normal.array;
+    let k = 0;
+    for (let i = 0; i <= HOSE_SEGMENTS; i++) {
+      const t = hoseParamAt(i / HOSE_SEGMENTS);
+      hoseCurve.getPoint(t, hoseP);
+      hoseTangent(t, hoseT);
+      if (i === 0) {
+        // First normal: perpendicular to the tangent, off its smallest axis.
+        const ax = Math.abs(hoseT.x), ay = Math.abs(hoseT.y), az = Math.abs(hoseT.z);
+        hoseAxis.set(ax <= ay && ax <= az ? 1 : 0, ay < ax && ay <= az ? 1 : 0, az < ax && az < ay ? 1 : 0);
+        hoseAxis.crossVectors(hoseT, hoseAxis).normalize();
+        hoseN.crossVectors(hoseT, hoseAxis);
+      } else {
+        hoseAxis.crossVectors(hosePrevT, hoseT);
+        if (hoseAxis.length() > Number.EPSILON) {
+          hoseAxis.normalize();
+          hoseN.applyAxisAngle(hoseAxis, Math.acos(clamp(hosePrevT.dot(hoseT), -1, 1)));
+        }
+      }
+      hoseB.crossVectors(hoseT, hoseN);
+      hosePrevT.copy(hoseT);
+      for (let j = 0; j <= HOSE_RADIAL; j++) {
+        const v = (j / HOSE_RADIAL) * TAU, sn = Math.sin(v), cs = -Math.cos(v);
+        const nx = cs * hoseN.x + sn * hoseB.x, ny = cs * hoseN.y + sn * hoseB.y, nz = cs * hoseN.z + sn * hoseB.z;
+        const nl = Math.hypot(nx, ny, nz) || 1;
+        nor[k] = nx / nl;
+        nor[k + 1] = ny / nl;
+        nor[k + 2] = nz / nl;
+        pos[k] = hoseP.x + HOSE_R * nor[k];
+        pos[k + 1] = hoseP.y + HOSE_R * nor[k + 1];
+        pos[k + 2] = hoseP.z + HOSE_R * nor[k + 2];
+        k += 3;
+      }
+    }
+    hoseGeo.attributes.position.needsUpdate = true;
+    hoseGeo.attributes.normal.needsUpdate = true;
   }
 
   const prevQ = new THREE.Quaternion();
@@ -1811,7 +1846,6 @@ function start(stage) {
     type: canHalf ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: 4,
   });
   const ldrRT = new THREE.WebGLRenderTarget(CAP, CAP, { depthBuffer: false });
-  const capBuf = new Uint8Array(CAP * CAP * 4);
 
   // Render targets skip the renderer's output conversion, so the photo gets its own sRGB pass.
   const postScene = new THREE.Scene();
@@ -1830,7 +1864,8 @@ function start(stage) {
           return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
         }
         void main() {
-          vec3 c = clamp(texture2D(tSrc, vUv).rgb, 0.0, 1.0);
+          // Sampled upside down so the read-back rows come out top first, ready for ImageData.
+          vec3 c = clamp(texture2D(tSrc, vec2(vUv.x, 1.0 - vUv.y)).rgb, 0.0, 1.0);
           c = clamp(mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, 1.25), 0.0, 1.0);
           c = mix(c, c * c * (3.0 - 2.0 * c), 0.5);
           vec2 q = vUv - 0.5;
@@ -1853,16 +1888,12 @@ function start(stage) {
 
     phone.visible = false;
     hose.visible = false;
-    // The flash barely reaches the meadow at this distance, so the photo keeps the dusk colours;
-    // even a faint linear wash turns the deep indigo foreground grey.
-    const screenFlash = flashUniform.value;
-    flashUniform.value = 0;
+    // Shots are taken before this frame's flash is applied to the scene, so the photo keeps the
+    // dusk colours; even a faint wash turns the deep indigo foreground grey.
     renderer.setRenderTarget(hdrRT);
     renderer.render(scene, captureCam);
-    flashUniform.value = screenFlash;
     renderer.setRenderTarget(ldrRT);
     renderer.render(postScene, postCam);
-    renderer.readRenderTargetPixels(ldrRT, 0, 0, CAP, CAP, capBuf);
     renderer.setRenderTarget(null);
     phone.visible = true;
     hose.visible = true;
@@ -1871,8 +1902,8 @@ function start(stage) {
     cv.width = cv.height = CAP;
     const cx = cv.getContext('2d');
     const img = cx.createImageData(CAP, CAP);
-    const row = CAP * 4;
-    for (let y = 0; y < CAP; y++) img.data.set(capBuf.subarray((CAP - 1 - y) * row, (CAP - y) * row), y * row);
+    const capBuf = new Uint8Array(img.data.buffer);
+    renderer.readRenderTargetPixels(ldrRT, 0, 0, CAP, CAP, capBuf);
     cx.putImageData(img, 0, 0);
 
     let r = 0, gg = 0, b = 0, n = 0;
@@ -1885,8 +1916,6 @@ function start(stage) {
     return { canvas: cv, color: [r / n, gg / n, b / n] };
   }
 
-  // Score: how centred the dog is (radial distance of its projected centre, 0 at 0.9 NDC or off-frame),
-  // weighted by how much of the frame it fills, minus a penalty for hand shake at the moment of capture.
   // Stand-in for the app's aesthetics score: any frame with the dog in it is a keeper, a little
   // better when centred; frames that miss the dog are the ones left out.
   function scoreShot(cam, shake) {
@@ -1927,7 +1956,7 @@ function start(stage) {
     const want = aimAtDog(pose.pressed.p);
     aim.yaw = clamp(want.yaw + rand(-0.02, 0.02), -0.7, 0.7);
     aim.pitch = clamp(want.pitch + rand(-0.02, 0.02), -0.35, 0.08);
-    session = { frames: [], eligible: 0, best: null, nextShot: time + INTERVALS[ui.interval] };
+    session = { frames: [], best: null, nextShot: time + INTERVALS[ui.interval] };
     if (!dogSim.stunt) dogSim.stuntAt = dogSim.time + 0.6;
     setMode('capture');
     addBeat(time, 0.4, 0.05, 0.6);
@@ -1952,7 +1981,6 @@ function start(stage) {
     const s = session;
     if (ui.flash && INTERVALS[ui.interval] >= 1) {
       flashAt = time;
-      updateFlash();
       if (flashOverlay && !reduced) {
         flashOverlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: 'cubic-bezier(0.2, 0, 0.4, 1)' });
       }
@@ -1963,9 +1991,9 @@ function start(stage) {
     haptic();
     if (frame.score >= KEEP_THRESHOLD) {
       s.frames.push(frame);
-      if (++s.eligible >= MAX_ELIGIBLE) endSession();
-    } else if (!s.best || frame.score > s.best.score) {
-      s.best = frame;
+      if (s.frames.length >= MAX_ELIGIBLE) endSession();
+    } else {
+      s.best ??= frame;
     }
   }
 
@@ -2203,7 +2231,6 @@ function start(stage) {
 
   resize();
   new ResizeObserver(resize).observe(stage);
-  applyDog();
   update(0);
   renderer.render(scene, camera);
 
